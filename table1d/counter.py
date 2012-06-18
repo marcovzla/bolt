@@ -14,9 +14,9 @@ from tabledb import *
 from parsetools import listify, regex_replace_phrases
 from generate_relations import sample_landmark, sample_reldeg
 
-sys.path.append(os.path.expanduser('~/github/stanford-corenlp-python'))
-from corenlp import StanfordCoreNLP
-corenlp = StanfordCoreNLP()
+# sys.path.append(os.path.expanduser('~/github/stanford-corenlp-python'))
+# from corenlp import StanfordCoreNLP
+# corenlp = StanfordCoreNLP()
 
 
 
@@ -141,20 +141,20 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
-    with open('sentences.csv') as f:
+    with open('sentences2.csv') as f:
         reader = csv.reader(f)
         next(reader)  # skip headers
 
         for row in reader:
             # unpack row and convert to the rigth types
-            location, region, nearfar, precise, phrase = row
+            location, region, nearfar, precise, phrase, parse = row
             location = int(location)
             precise = (precise == 'T')
             # sample landmark, relation and degree
             lmk_name, lmk_loc = sample_landmark(location/100)
             relation, degree = sample_reldeg(location/100, lmk_loc)
             # parse sentence
-            parse = parse_sentence(phrase)['parsetree']
+            # parse = parse_sentence(phrase)['parsetree']
             # modify parsetree
             modparse = regex_replace_phrases(parse, regex_replacement_phrases)
             # listify parsetrees
