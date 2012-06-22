@@ -14,11 +14,9 @@ from tabledb import *
 from parsetools import listify, regex_replace_phrases
 from generate_relations import sample_landmark, sample_reldeg
 
-# sys.path.append(os.path.expanduser('~/github/stanford-corenlp-python'))
-# from corenlp import StanfordCoreNLP
-# corenlp = StanfordCoreNLP()
-
-
+## sys.path.append(os.path.expanduser('~/github/stanford-corenlp-python'))
+## from corenlp import StanfordCoreNLP
+## corenlp = StanfordCoreNLP()
 
 def parse_sentence(s):
     """Returns a dictionary with the parse results returned by
@@ -41,11 +39,11 @@ regex_replacement_phrases = [
      "(ADVP (RB very) (PP (P close to)"),
     ("\(ADVP \(RB far\) \(PP \(IN from\)", "(PP (P far from)"),
     ("\(ADVP \(RB close\) \(PP \(TO to\)", "(PP (P close to)"),
-    # Other
+    # Other (Note: I changed the way OF-phrases are parsed.  --Colin)
     ("\(NP \(NP(?P<NP1>( \(.*?\))*)\) \(PP (?P<of>\(IN of\)) \(NP(?P<NP2>( \(.*?\))*)\)",
-     "(NP (NP\g<NP1>) of (NP\g<NP2>))"),
+     "(OFNP (OFNP1\g<NP1>) (OF of) (OFNP2\g<NP2>))"),
     ("\(ADVP \(RB very\) \(PP ", "(PP (RB very) "),
-    ("\(RB not\) \(PP ", "(PP (RB not) "),
+    ("\(RB not\) \(PP ", "(PP (NEG not) "),
     (r'\(ADVP \(RB nearly\)\) \(PP ', '(PP (RB nearly) '),
     (r'\(ROOT \(ADJP \(JJR closer\) \(PP (.+)\)\)\)', r'(ROOT (PP (JJR closer) \1))'),
     (r'\(NP \(NP \(PRP me\)\) \(PP \(IN than\) (.+)\)\)', r'(PRP me) (IN than) \1'),
@@ -98,42 +96,66 @@ def struct_desc(chunk):
 
 rel_struct = struct_desc
 
-def lmk_struct(chunk):
-    struct = []
-    for n in chunk:
-        if isinstance(n, list):
-            if n[0] == 'NP':
-                # expand NP
-                struct.append(struct_desc(n[1:]))
-            else:
-                struct.append(n[0])
-        else:
-            struct.append(n)
-    return ' '.join(struct)
+## def lmk_struct(chunk):
+##     struct = []
+##     for n in chunk:
+##         if isinstance(n, list):
+##             if n[0] in ['NP']:
+##                 #expand NP
+##                 struct.append(struct_desc(n[1:]))
+##             else:
+##                 struct.append(n[0])
+##         else:
+##             struct.append(n)
+##     return ' '.join(struct)
 
+def get_expansion(parse):
+    return (parse[0], map(lambda(x): x[0], parse[1:]))
 
+def get_phrases(chunk):
+    phrase_tuples = []
+    if chunk[0] in ['REL', 'LMK', 'NP', 'PP', 'OFNP', 'OFNP1', 'OFNP2']:
+        phrase_tuples.append(get_expansion(chunk))
+    for n in chunk[1:]:
+        phrase_tuples += get_phrases(n)
+    return(phrase_tuples)
+
+def get_words_once(chunk, phrase):
+    #formerly get_words()
+    return [(' '.join(n[1:]), n[0], phrase) for n in chunk]
 
 def get_words(chunk):
-    return [(' '.join(n[1:]), n[0]) for n in chunk]
-
-rel_words = get_words
-
-def lmk_words(chunk):
-    results = []
+    #formerly lmk_words()
+    word_tuples = []
     for n in chunk:
         if isinstance(n, list):
-            if n[0] == 'NP':
-                results += get_words(n[1:])
+            if n[0] in ['REL', 'LMK', 'NP', 'PP', 'OFNP', 'OFNP1', 'OFNP2']:
+                word_tuples += get_words(n)
             else:
-                results.append((' '.join(n[1:]), n[0]))
+                word_tuples += get_words_once([n], chunk[0])
+        elif n in ['REL', 'LMK', 'NP', 'PP', 'OFNP', 'OFNP1', 'OFNP2']:
+            continue
         else:
-            results.append((n,n))
-    return results
+            word_tuples.append((n,n,chunk[0]))
+    return word_tuples
 
-def all_words(rel_chunk, lmk_chunk):
-    return rel_words(rel_chunk) + lmk_words(lmk_chunk)
+## def all_words(rel_chunk, lmk_chunk):
+##     return rel_words(rel_chunk) + lmk_words(lmk_chunk)
 
-
+def modify_parse(parse):
+     # modify parsetree
+     modparse = regex_replace_phrases(parse, regex_replacement_phrases)
+     # listify parsetrees
+     lparse = to_list(parse)
+     lmodparse = to_list(modparse)
+     # extract relation and landmark chunks of the parsetree
+     rel_chunk = ['REL'] + lmodparse[1][1:-1]
+     lmk_chunk = ['LMK'] + [lmodparse[1][-1]]
+     rel_words = get_words(rel_chunk)
+     lmk_words = get_words(lmk_chunk)
+     rel_phrases = get_phrases(rel_chunk)
+     lmk_phrases = get_phrases(lmk_chunk)
+     return(rel_words, lmk_words, rel_phrases, lmk_phrases)
 
 if __name__ == '__main__':
     import argparse
@@ -141,86 +163,129 @@ if __name__ == '__main__':
     parser.add_argument('--verbose', action='store_true')
     args = parser.parse_args()
 
+    iters = 1
+    
     with open('sentences2.csv') as f:
         reader = csv.reader(f)
         next(reader)  # skip headers
 
         for row in reader:
             # unpack row and convert to the rigth types
-            location, region, nearfar, precise, phrase, parse = row
-            location = int(location)
-            precise = (precise == 'T')
+            location, region, nearfar, precise, utterance, parse = row
+            location = int(location) / 100.0
+            # precise = (precise == 'T')
             # sample landmark, relation and degree
-            lmk_name, lmk_loc = sample_landmark(location/100)
-            relation, degree = sample_reldeg(location/100, lmk_loc)
-            # parse sentence
-            # parse = parse_sentence(phrase)['parsetree']
-            # modify parsetree
-            modparse = regex_replace_phrases(parse, regex_replacement_phrases)
-            # listify parsetrees
-            lparse = to_list(parse)
-            lmodparse = to_list(modparse)
-            # extract relation and landmark chunks of the parsetree
-            rel_chunk = lmodparse[1][1:-1]
-            lmk_chunk = lmodparse[1][-1][1:]
+            for j in range(iters):
+                lmk_name, lmk_loc = sample_landmark(location)
+                relation, degree = sample_reldeg(location, lmk_loc)
+                # parse sentence
+                # parse = parse_sentence(phrase)['parsetree']
+                rel_words, lmk_words, rel_phrases, lmk_phrases = modify_parse(parse)
+                
+                if args.verbose:
+                    print '-' * 70
+                    print 'Utterance: %r' % utterance
+                    print 'Location: %s' % location
+                    print 'Landmark: %s (%s)' % (lmk_loc, lmk_name)
+                    print 'Relation: %s' % relation
+                    print 'Degree: %s' % degree
+                    print 'Parse tree:\n%s' % parse
+                    #print 'Modified parse tree:\n%s' % modparse
+                    #print 'Parse tree as list:\n%s' % pf(lparse)
+                    #print 'Modified parse tree as list:\n%s' % pf(lmodparse)
+                    #print 'Relation chunk:\n%s' % pf(rel_chunk)
+                    #print 'Landmark chunk:\n%s' % pf(lmk_chunk)
+                    print 'Relation structure: %s' % rel_phrases[0][1]
+                    print 'Landmark structure: %s' % lmk_phrases[0][1]
+                    print 'Relation words:\n%s' % pf(rel_words)
+                    print 'Landmark words:\n%s' % pf(lmk_words)
+                    print
 
-            if args.verbose:
-                print '-' * 70
-                print 'Phrase: %r' % phrase
-                print 'Location: %s' % location
-                print 'Landmark: %s (%s)' % (int(lmk_loc*100), lmk_name)
-                print 'Relation: %s' % relation
-                print 'Degree: %s' % degree
-                print 'Parse tree:\n%s' % parse
-                print 'Modified parse tree:\n%s' % modparse
-                print 'Parse tree as list:\n%s' % pf(lparse)
-                print 'Modified parse tree as list:\n%s' % pf(lmodparse)
-                print 'Relation chunk:\n%s' % pf(rel_chunk)
-                print 'Landmark chunk:\n%s' % pf(lmk_chunk)
-                print 'Relation structure: %s' % rel_struct(rel_chunk)
-                print 'Landmark structure: %s' % lmk_struct(lmk_chunk)
-                print 'Relation words:\n%s' % pf(rel_words(rel_chunk))
-                print 'Landmark words:\n%s' % pf(lmk_words(lmk_chunk))
-                print
+                    # get context from db or create a new one
 
-            # get context from db or create a new one
-            ctx = Context.get_or_create(
-                    location=location,
-                    landmark_location=int(lmk_loc*100),
-                    landmark_name=lmk_name,
-                    relation=relation,
-                    degree=degree)
+                    rel_ctx = RelationContext.get_or_create(
+                        relation=relation,
+                        degree=degree)
 
-            # store structures
-            rs = RelationStructure()
-            rs.structure = rel_struct(rel_chunk)
-            rs.context = ctx
+                    lmk_ctx = LandmarkContext.get_or_create(
+                        landmark_name = lmk_name,
+                        landmark_location = lmk_loc)
 
-            ls = LandmarkStructure()
-            ls.structure = lmk_struct(lmk_chunk)
-            ls.context = ctx
+                    ctx = Context.get_or_create(
+                        ## location = location,
+                        relation = rel_ctx,
+                        landmark = lmk_ctx)
 
-            # store words with their POS tag
-            # note that these are modified POS tags
-            for w,pos in all_words(rel_chunk, lmk_chunk):
-                word = Word()
-                word.word = w
-                word.pos = pos
-                word.context = ctx
+                    # store structures
+                    for phr,exp in rel_phrases:
+                        role = 'rel'
+                        rs = PhraseExpansion()
+                        rs.parent = Phrase.get_or_create(phrase = str(phr), role = str(role))
+                        rs.expansion = str(exp)
+                        rs.role = str(role)
+                        rs.context = ctx
+                        rs.relation_context = rel_ctx
+                        rs.landmark_context = lmk_ctx
 
-            # store bigrams and trigrams
-            for w1,w2 in bigrams(phrase):
-                bi = Bigram()
-                bi.word1 = w1
-                bi.word2 = w2
-                bi.context = ctx
+                    for phr,exp in lmk_phrases:
+                        role = 'lmk'
+                        ls = PhraseExpansion()
+                        ls.parent = Phrase.get_or_create(phrase = str(phr), role = str(role))
+                        ls.expansion = str(exp)
+                        ls.role = str(role)
+                        ls.context = ctx
+                        ls.relation_context = rel_ctx
+                        ls.landmark_context = lmk_ctx
 
-            for w1,w2,w3 in trigrams(phrase):
-                tri = Trigram()
-                tri.word1 = w1
-                tri.word2 = w2
-                tri.word3 = w3
-                tri.context = ctx
+
+                    # store words with their POS tag
+                    # note that these are modified POS tags
+
+                    ## for w,pos in all_words(rel_chunk, lmk_chunk):
+                    ##     word = Word()
+                    ##     word.word = w
+                    ##     word.pos = pos
+                    ##     word.context = ctx
+
+                    for w,pos,phr in rel_words:
+                        role = 'rel'
+                        phrase = Phrase.get_or_create(phrase = str(phr), role = str(role))
+                        part_of_speech = PartOfSpeech.get_or_create(pos = str(pos), role = str(role))
+                        word = Word()
+                        word.role = str(role)
+                        word.word = str(w)
+                        word.pos = part_of_speech
+                        word.phrase = phrase
+                        word.relation_context = rel_ctx
+                        word.landmark_context = lmk_ctx
+                        word.context = ctx
+
+                    for w,pos,phr in lmk_words:
+                        role = 'lmk'
+                        phrase = Phrase.get_or_create(phrase = str(phr), role = str(role))
+                        part_of_speech = PartOfSpeech.get_or_create(pos = str(pos), role = str(role))
+                        word = Word()
+                        word.role = str(role)
+                        word.word = str(w)
+                        word.pos = part_of_speech
+                        word.phrase = phrase
+                        word.relation_context = rel_ctx
+                        word.landmark_context = lmk_ctx
+                        word.context = ctx
+
+                    # store bigrams and trigrams
+                    for w1,w2 in bigrams(utterance):
+                        bi = Bigram()
+                        bi.word1 = w1
+                        bi.word2 = w2
+                        bi.context = ctx
+
+                    for w1,w2,w3 in trigrams(utterance):
+                        tri = Trigram()
+                        tri.word1 = w1
+                        tri.word2 = w2
+                        tri.word3 = w3
+                        tri.context = ctx
 
     # save all
     session.commit()
