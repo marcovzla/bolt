@@ -2,3 +2,4 @@
 *.db*
 .ropeproject
 *.sublime-workspace
+*.sublime-project
