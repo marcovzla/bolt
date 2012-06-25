@@ -1,0 +1,3 @@
+[submodule "bllip-parser"]
+	path = bllip-parser
+	url = https://github.com/BLLIP/bllip-parser.git
