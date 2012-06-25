@@ -56,6 +56,13 @@ class LandmarkContext(Entity):
     words = OneToMany('Word')
     expansions = OneToMany('PhraseExpansion')
 
+    @classmethod
+    def get_or_create(cls, **params):
+        result = cls.get_by(**params)
+        if not result:
+            result = cls(**params)
+        return result
+
 
 class Phrase(Entity):
     using_options(tablename='phrases')

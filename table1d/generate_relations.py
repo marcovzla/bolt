@@ -1,12 +1,19 @@
+from __future__ import division
+
 from numpy import *
 from numpy.random import multinomial
 from scipy.stats import *
 from itertools import *
 
+def categorical_sample(values, probs):
+    index = random.multinomial(1, probs).nonzero()[0][0]
+    value = values[index]
+    return(value)
+
 def compute_landmark_posteriors(loc, lmk_names = ['beginning', 'middle', 'end'],
                     lmk_locs = array([0.0, 0.5, 1.0]),
                     prior = array([1, 1, 1]),
-                    sigma = 1):
+                    sigma = 1/4):
     joint = prior * norm.pdf(lmk_locs, loc, sigma)
     posterior = joint / sum(joint)
     return (lmk_names,posterior)
@@ -14,7 +21,7 @@ def compute_landmark_posteriors(loc, lmk_names = ['beginning', 'middle', 'end'],
 def sample_landmark(loc, lmk_names = ['beginning', 'middle', 'end'],
                     lmk_locs = array([0.0, 0.5, 1.0]),
                     prior = array([1, 1, 1]),
-                    sigma = 1):
+                    sigma = 1/4):
     """
     Randomly chooses a landmark location from the dictionary provided,
     with a bias to choose one nearby to loc
@@ -29,7 +36,7 @@ def sample_landmark(loc, lmk_names = ['beginning', 'middle', 'end'],
 
     Value
     -----
-    Returns a landmark label (string)
+    Returns a tuple with landmark label (string) and landmark location (float)
 
     """
     joint = prior * norm.pdf(lmk_locs, loc, sigma)
@@ -40,7 +47,7 @@ def sample_landmark(loc, lmk_names = ['beginning', 'middle', 'end'],
     return((key,lmk))
 
 def compute_loc_dens(loclmk, reldeg,
-                     degprecision = {0: 2.0, 1: 5.0, 2: 10.0}
+                     degprecision = {0: 10.0, 1: 50.0, 2: 100.0}
                      ):
     """
     Evaluate density function for a location, relation and degree
@@ -174,7 +181,7 @@ def generate_relation(loc, lmk_names = ['beginning', 'middle', 'end'],
                       rel_prior = array([1,1,1,1]),
                       degs = [0,1,2],
                       deg_prior = array([1,1,1]),
-                      sigma = 1):
+                      sigma = 1/4):
     lmk_name, lmk_loc = sample_landmark(loc, lmk_names, lmk_locs, lmk_prior, sigma)
     reldeg = sample_reldeg(loc, lmk_loc, rels, rel_prior, degs, deg_prior)
     return(lmk_name, reldeg)

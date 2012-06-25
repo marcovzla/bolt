@@ -168,8 +168,10 @@ if __name__ == '__main__':
     with open('sentences2.csv') as f:
         reader = csv.reader(f)
         next(reader)  # skip headers
-
+        sentence_number = 0
         for row in reader:
+            sentence_number += 1
+            print 'Sentence #%d' % sentence_number
             # unpack row and convert to the rigth types
             location, region, nearfar, precise, utterance, parse = row
             location = int(location) / 100.0
