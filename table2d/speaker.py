@@ -14,7 +14,7 @@ def main():
     epsilon = 0.000001
     landmarks_distances = []
     for representation in representations:
-        for lmk in representation.landmarks.values():
+        for lmk in representation.get_landmarks():
             landmarks_distances.append([lmk, lmk.distance_to(location)])
 
     landmarks, distances = zip( *landmarks_distances )

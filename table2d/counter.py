@@ -31,8 +31,19 @@ def parse_sentence(s):
     the Stanford parser for the provided sentence."""
     return json.loads(corenlp.parse(s, verbose=False))['sentences'][0]
 
+regex_replacement_phrases = [
+    (r'\(FRAG (.*)\)$', r'\1'),
+    (r'^\(S1 ','(ROOT '),
 
+    (r'\(AD.P (\(RB .+?\) \(RB .+?\))\)', r'\1'),
+    (r'\(RB not\) (\(AD.P)', r'\1 (RB not)'),
+    (r'\(RB far\) \(PP \(IN from\)', '(PP (IN far from)'),
+    (r'\(RB close\) \(PP \(TO to\)', '(PP (TO close to)'),
+    (r'((\(RB .+?\) )+)\(PP ', r'(PP \1'),
+    (r'\(AD.P (\(PP .+)\)$', r'\1'),
+]
 
+'''
 regex_replacement_phrases = [
     # remove FRAG
     ('\(S \(VP \(RB not\) \(VP \(VB close\) \(PP \(TO to\)','(FRAG (PP (RB not) (P close to)'),
@@ -42,9 +53,9 @@ regex_replacement_phrases = [
      r'(PP (IN on) (PRP$ my) (NN side) (IN of) \1)'),
     ("\(PP \(IN on\) \(NP \(NP \(DT this\) \(NN side\)\) \(PP \(IN of\)",
      "(PP (P on this side of)"),
-    (r'\(PP \(IN on\) \(NP \(NP \(DT the\) \(JJ other\) \(NN side\)\) \(PP \(IN of\)',
-     r'(PP (P on the other side of)'),
-    ("\(.. close\) \(PP \(TO to\)", "(PP (P close to)"),
+    (r"\(PP \(IN on\) \(NP \(NP \(DT the\) \(JJ other\) \(NN side\)\) \(PP \(IN of\)",
+     '(PP (P on the other side of)'),
+      ("\(.. close\) \(PP \(TO to\)", "(PP (P close to)"),
     ("\(AD.P \(PP ", "(PP "),
     ("\(AD.P \(RB far\) \(PP \(IN from\)", "(PP (P far from)"),
     ("\(AD.P \(ADVP \(RB quite\) \(RB far\)\) \(PP \(IN from\)", "(PP (RB quite) (P far from)"),
@@ -58,7 +69,7 @@ regex_replacement_phrases = [
     ("\(RB not\) \(PP \(ADVP \(RB really\)\)","(PP (RB not really)"),
     # Other
     ("\(NP \(NP(?P<NP1>( \(.*?\))*)\) \(PP (?P<of>\(IN of\)) \(NP(?P<NP2>( \(.*?\))*)\)",
-     "(NP (NP\g<NP1>) of (NP\g<NP2>))"),
+     r"(NP (NP\g<NP1>) of (NP\g<NP2>))"),
     ("\(ADVP \(RB very\) \(PP ", "(PP (RB very) "),
     ("\(RB not\) \(PP ", "(PP (RB not) "),
     (r'\(ADVP \(RB nearly\)\) \(PP ', '(PP (RB nearly) '),
@@ -67,7 +78,7 @@ regex_replacement_phrases = [
     (r'\(NP \(NP \(DT the\) \(JJR (.+)\)\) \(VP \(VBD (.+)\) \(NP \(NN corner\)', r'(NP (DT the) (JJ \1 \2) (NN corner)'),
     ('\(JJR lower\) \(NN right\)', '(JJ lower right)'),
 ]
-
+'''
 
 
 def to_list(parsetree):
@@ -159,36 +170,39 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     bad = 0
-    with open('table2D_phrases2.csv') as f:
+    with open('table2D_phrases_and_parses.csv') as f:
         reader = csv.reader(f, delimiter=';')
         next(reader)  # skip headers
 
-        startfrom = 130
+        startfrom = 0
         for rownum,row in enumerate(reader):
             if rownum < startfrom:
                 continue
         
-            print rownum
+            # print rownum
             # unpack row and convert to the rigth types
-            location, phrase = row
+            location, phrase, parse = row
             #location = int(location)
             location = eval(location)
             
             # sample landmark, relation and degree
-            table = RectangleRepresentation()
-            representations = dict( {'rectangle':table}, **table.get_line_representations() )
-            
+            table = RectangleRepresentation(['table'])
+
+            representations = [table]
+            representations.extend(table.get_alt_representations())
+
             epsilon = 0.000001
             landmarks_distances = []
-            for name, representation in representations.items():
-                landmarks_distances.extend( representation.distance_to_landmarks(location) )
-            
+            for representation in representations:
+                for lmk in representation.landmarks.values():
+                    landmarks_distances.append([lmk, lmk.distance_to(location)])
+
             landmarks, distances = zip( *landmarks_distances )
             scores = 1.0/(array(distances)**1.5 + epsilon)
             lm_probabilities = scores/sum(scores)
             index = lm_probabilities.cumsum().searchsorted( random.sample(1) )[0]
             sampled_landmark = landmarks[index]
-            
+
             rel_scores = []
             for relation in relations:
                 rel_scores.append( relation.probability(location, sampled_landmark) )
@@ -201,12 +215,15 @@ if __name__ == '__main__':
             #lmk_name, lmk_loc = sample_landmark(location/100)
             #relation, degree = sample_reldeg(location/100, lmk_loc)
             # parse sentence
-            parse = parse_sentence(phrase)['parsetree']
+            #parse = parse_sentence(phrase)['parsetree']
             # modify parsetree
             modparse = regex_replace_phrases(parse, regex_replacement_phrases)
             # listify parsetrees
             lparse = to_list(parse)
             lmodparse = to_list(modparse)
+
+
+
             # extract relation and landmark chunks of the parsetree
             rel_chunk = lmodparse[1][1:-1]
             lmk_chunk = lmodparse[1][-1][1:]
@@ -232,19 +249,26 @@ if __name__ == '__main__':
 
             try:
                 all_words(rel_chunk, lmk_chunk)
-            except:
+            except Exception as e:
                 bad += 1
+                print
+                print
+                print e
                 print bad
+                print phrase
                 print parse
                 print modparse
                 print lmodparse
+                print
+                print rel_chunk
+                print lmk_chunk
                 continue
 
             # get context from db or create a new one
             ctx = Context.get_or_create(
                     location=str(location),
-                    landmark_location=str(sampled_landmark.type),
-                    landmark_name=sampled_landmark.name_str,
+                    landmark_location=str(sampled_landmark.representation),
+                    landmark_name=sampled_landmark.representation.__class__.__name__,
                     relation=sampled_relation.__class__.__name__,
                     degree=sampled_relation.degree)
 

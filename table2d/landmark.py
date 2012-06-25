@@ -35,6 +35,7 @@ class AbstractRepresentation(object):
         self.alt_representations = []
         self.parent_landmark = None
         self.descriptions = descriptions
+        self.landmarks = {}
 
     def get_alt_representations(self):
         result = self.alt_representations
@@ -45,6 +46,12 @@ class AbstractRepresentation(object):
         return result
 
     def project_point(self, point):
+        if self.parent_landmark is None:
+            return self.my_project_point(point)
+        else:
+            return self.parent_landmark.parent.project_point(point)
+
+    def my_project_point(self, point):
         raise NotImplementedError
 
     def distance_to(self, point):
@@ -56,6 +63,14 @@ class AbstractRepresentation(object):
 
         return 'the ' + choice(self.descriptions)
 
+    def get_landmarks(self):
+        result = self.landmarks.values()
+
+        for landmark in self.landmarks.values():
+            result.extend( landmark.representation.get_landmarks() )
+
+        return result
+
 
 class PointRepresentation(AbstractRepresentation):
     def __init__(self, point, descriptions=['point']):
@@ -64,7 +79,7 @@ class PointRepresentation(AbstractRepresentation):
         self.alt_representations = []
         self.landmarks = {}
 
-    def project_point(self, point):
+    def my_project_point(self, point):
         return Vec2(self.location.x, self.location.y)
 
     def distance_to(self, point):
@@ -76,19 +91,20 @@ class LineRepresentation(AbstractRepresentation):
         super(LineRepresentation, self).__init__(descriptions)
         self.line = line
         self.alt_representations = [PointRepresentation(self.line.mid, descriptions)]
-        words = ['near end', 'middle', 'far end'] if orientation == 'height' else ['left side', 'middle', 'right side']
+        words = [['near end','this end','my end'], ['middle','center'], ['far end','that end','other end']] if orientation == 'height' \
+           else [['left side'], ['middle','center'], ['right side']]
 
         self.landmarks = \
             {
-                'start': Landmark('start', PointRepresentation(self.line.start), self, [words[0]]),
-                'end':   Landmark('end',   PointRepresentation(self.line.end),   self, [words[2]]),
-                'mid':   Landmark('mid',   PointRepresentation(self.line.mid),   self, [words[1]]),
+                'start': Landmark('start', PointRepresentation(self.line.start), self, words[0]),
+                'end':   Landmark('end',   PointRepresentation(self.line.end),   self, words[2]),
+                'mid':   Landmark('mid',   PointRepresentation(self.line.mid),   self, words[1]),
             }
 
         for lmk in self.landmarks.values():
             lmk.representation.parent_landmark = lmk
 
-    def project_point(self, point):
+    def my_project_point(self, point):
         return self.line.line.project(point)
 
     def distance_to(self, point):
@@ -128,7 +144,7 @@ class RectangleRepresentation(AbstractRepresentation):
         for lmk in self.landmarks.values():
             lmk.representation.parent_landmark = lmk
 
-    def project_point(self, point):
+    def my_project_point(self, point):
         return point
 
     def distance_to(self, point):
@@ -153,6 +169,17 @@ if __name__ == '__main__':
         print lmk.get_description()
         print lmk.representation.landmarks['end'].get_description()
         print r.landmarks['ul_corner'].get_description()
+
+        print r.landmarks['ul_corner'].distance_to( Vec2(0,0) )
+
+        representations = [r]
+        representations.extend(r.get_alt_representations())
+
+        location = Vec2(0,0)
+        landmarks_distances = []
+        for representation in representations:
+            for lmk in representation.get_landmarks():
+                landmarks_distances.append([lmk, lmk.distance_to(location)])
 
         # print 'Distance from POI to LLCorner landmark is %f' % r.landmarks['ll_corner'].distance_to(poi)
         # print 'Distance from POI to URCorner landmark is %f' % r.landmarks['ur_corner'].distance_to(poi)

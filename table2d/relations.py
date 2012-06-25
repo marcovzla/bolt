@@ -7,26 +7,29 @@ class is_adjacent(Relation):
         super(is_adjacent,self).__init__(degree)
         self.descriptions = {('near', (1.,1.,1.) ): [
                                             [('somewhat ',1.),
-                                             ('sort of ',1.),
-                                             ('kind of ',1.)],
-                                            [('',1.)],
+                                             ('pretty ',1.),
+                                             ('fairly ',1.)],
+                                            [('',1.),
+                                             ('rather ',1.)],
                                             [('very ',1.),
                                              ('quite ',1.),
                                              ('really ',1.)]
                                          ],
                              ('close to', (1.,1.,1.) ): [
                                             [('somewhat ',1.),
-                                             ('sort of ',1.),
-                                             ('kind of ',1.)],
-                                            [('',1)],
+                                             ('pretty ',1.),
+                                             ('fairly ',1.)],
+                                            [('',1),
+                                             ('rather ',1.)],
                                             [('very ',1.),
                                              ('quite ',1.),
                                              ('really ',1.)]
                                          ],
-                             ('at', (0.,0.5,2.) ): [
-                                            [],
-                                            [('nearly ',1.)],
-                                            [('',1.)]
+                             ('at', (1.,1.,1.) ): [
+                                            [('almost ',1.),
+                                             ('nearly ',1.)],
+                                            [('',1.)],
+                                            [('squarely ',1.)]
                                          ],
                             }
         self.mus = [0.5, 0.3, 0.15]
@@ -54,9 +57,10 @@ class is_not_adjacent(Relation):
         super(is_not_adjacent,self).__init__(degree)
         self.descriptions = {('far from', (1.,1.,1.) ): [
                                             [('somewhat ',1.),
-                                             ('sort of ',1.),
-                                             ('kind of ',1.)],
-                                            [('',1.)],
+                                             ('pretty ',1.),
+                                             ('fairly ',1.)],
+                                            [('',1.),
+                                             ('rather ',1.)],
                                             [('very ',1.),
                                              ('quite ',1.),
                                              ('really ',1.)]
