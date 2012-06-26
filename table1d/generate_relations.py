@@ -82,19 +82,19 @@ def compute_loc_dens(loclmk, reldeg,
     if rel == 'is-greater':
         # fit entire distribution past point
         support_width = 1.0 - lmk
-        lmk = 0.0
         if support_width == 0.0:
             return 0.0
         else:
             loc = (loc - lmk) / support_width
+        lmk = 0.0
     elif rel == 'is-less':
         # fit entire distribution previous to point
         support_width = lmk
-        lmk = 1.0
         if support_width == 0.0:
             return 0.0
         else:
             loc = loc / support_width
+        lmk = 1.0
     else:
         # otherwise use the entire interval
         support_width = 1
@@ -108,7 +108,8 @@ def compute_loc_dens(loclmk, reldeg,
         peak = min(lmk, 1 - lmk)
         a = (peak*(2*prec - 1) - prec) / (prec*(peak - 1))
         if lmk > 0.5: a,b = b,a
-    loc = loc * 0.99 + 0.00001
+    loc = loc * 0.99 + 0.005
+    print "Location: %0.3f \n Alpha: %0.3f \n Beta: %0.3f" % (loc, a, b)
     return beta.pdf(loc, a, b) / support_width
 
 def compute_rel_posteriors(loc, lmk,
