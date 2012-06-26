@@ -37,6 +37,9 @@ class is_adjacent(Relation):
 
     def probability(self, location, landmark):
         distance = landmark.distance_to(location)
+        return self.distance_probability(distance)
+
+    def distance_probability(self,distance):
         return 1 - norm.cdf(distance, self.mus[self.degree], self.ss[self.degree])
 
 class not_is_adjacent(is_adjacent):
@@ -48,8 +51,11 @@ class not_is_adjacent(is_adjacent):
         # Hack to not say "not somewhat near"
         if self.degree == 0:
             return 0
+        distance = landmark.distance_to(location)
+        return self.distance_probability(distance)
 
-        return 1 - super(not_is_adjacent, self).probability(location, landmark)
+    def distance_probability(self,distance):
+        return 1 - super(not_is_adjacent, self).distance_probability(distance)
 
 class is_not_adjacent(Relation):
 
@@ -71,6 +77,9 @@ class is_not_adjacent(Relation):
 
     def probability(self, location, landmark):
         distance = landmark.distance_to(location)
+        return self.distance_probability(distance)
+
+    def distance_probability(self,distance):
         return norm.cdf(distance, self.mus[self.degree], self.ss[self.degree])
 
 class not_is_not_adjacent(is_not_adjacent):
@@ -81,8 +90,11 @@ class not_is_not_adjacent(is_not_adjacent):
     def probability(self, location, landmark):
         if self.degree == 0:
             return 0
+        distance = landmark.distance_to(location)
+        return self.distance_probability(distance)
 
-        return 1 - super(not_is_not_adjacent, self).probability(location, landmark)
+    def distance_probability(self,distance):
+        return 1 - super(not_is_not_adjacent, self).distance_probability(distance)
 
 relations = [is_adjacent(0), is_adjacent(1), is_adjacent(2),
              not_is_adjacent(0), not_is_adjacent(1), not_is_adjacent(2),
