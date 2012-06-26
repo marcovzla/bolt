@@ -1,16 +1,13 @@
 #!/usr/bin/env python
-
 from __future__ import division
+
+import os
+import sys
 
 from tabledb import *
 from generate_relations import *
 from numpy import *
 from ast import literal_eval
-
-
-sys.path.append(os.path.expanduser('~/github/stanford-corenlp-python'))
-from corenlp import StanfordCoreNLP
-corenlp = StanfordCoreNLP()
 
 def get_context(loc, meaning = ()):
     if len(meaning):
@@ -100,7 +97,8 @@ def generate_sentence(loc, meaning = ()):
         try:
             rc,lc,c = get_context(None, meaning)
         except ValueError:
-            print "Meaning has the wrong number of pieces"
+            raise "Meaning has the wrong number of pieces"
+            
     else:
         rc,lc,c = get_context(loc)
     rs = get_expansion(rc,lc,c,'REL','rel')
@@ -108,5 +106,17 @@ def generate_sentence(loc, meaning = ()):
     rw = get_words(rc,lc,c,'REL',rs,'rel')
     lw = get_words(rc,lc,c,'LMK',ls,'lmk')
     sentence = ' '.join(rw + lw)
+    print sentence
     return sentence
-    
+
+if __name__ == '__main__':
+    import getopt
+    opts, extraparams = getopt.getopt(sys.argv[1:], 'm:l:', ['meaning','location'])
+    location = None
+    meaning = ()
+    for o,p in opts:
+        if o in ['-m', '--meaning']:
+            meaning = p
+        elif o in ['-l', '--location']:
+            location = float(p)
+    generate_sentence(location,meaning)

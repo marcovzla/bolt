@@ -10,34 +10,19 @@ import pprint
 
 from functools import partial
 
-sys.path.append(os.path.expanduser('~/github/stanford-corenlp-python'))
-from corenlp import StanfordCoreNLP
-corenlp = StanfordCoreNLP()
-
 from tabledb import *
-from counter import parse_sentence, modify_parse
+from parse_functions import get_parse
 from generate_relations import *
 from numpy import *
 from ast import literal_eval
+from collections import defaultdict
 
 def uniquify_distribution(labels, probs):
-   new_dist = {}
+   new_dist = defaultdict(float)
    for j in range(len(labels)):
        marker = str(labels[j])
-       if marker in new_dist:
-           new_dist[marker] += probs[j]
-       else:
-           new_dist[marker] = probs[j]
-   return new_dist
-
-def get_parse(s):
-    """Returns a dictionary with the parse results returned by
-    the Stanford parser for the provided sentence."""
-
-    sparse = json.loads(corenlp.parse(s, verbose=False))['sentences'][0]['parsetree']
-    mparse = modify_parse(sparse)
-    return mparse
-
+       new_dist[marker] = probs[j]
+   return new_dist.items()
 
 def try_meaning():
     loc = random.uniform()
@@ -120,11 +105,25 @@ def get_sentence_posteriors(sentence, iters):
         r_w_prob = get_words_prob(rel_ctx, lmk_ctx, ctx, 'rel', rel_words)
         l_w_prob = get_words_prob(rel_ctx, lmk_ctx, ctx, 'lmk', lmk_words)
         likelihood = r_exp_prob * l_exp_prob * r_w_prob * l_w_prob
-        print "Meaning: %s, Likelihood: %1.6f" % (meaning[0:-1], likelihood)
+        #print "Meaning: %s, Likelihood: %1.6f" % (meaning[0:-1], likelihood)
         probs.append(likelihood)
         meanings.append(meaning)
+        print '.'
     probs = array(probs) / sum(probs)
     return uniquify_distribution(meanings, probs)
 
+def print_posteriors(posteriors):
+   for m,p in posteriors:
+      print 'Meaning: %-20s \t\t Probability: \t %0.4f' % (m,p)
 
-    
+if __name__ == '__main__':
+   import getopt
+   opts, extraparams = getopt.getopt(sys.argv[2:], 'i:', ['iterations'])
+   sentence = sys.argv[1]
+   verbose = False
+   iters = 1
+   for o,p in opts:
+      if o in ['-i', '--iterations']:
+         iters = int(p)
+   posteriors = get_sentence_posteriors(sentence,iters)
+   print_posteriors(posteriors)

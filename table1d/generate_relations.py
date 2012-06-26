@@ -109,7 +109,8 @@ def compute_loc_dens(loclmk, reldeg,
         a = (peak*(2*prec - 1) - prec) / (prec*(peak - 1))
         if lmk > 0.5: a,b = b,a
     loc = loc * 0.99 + 0.005
-    print "Location: %0.3f \n Alpha: %0.3f \n Beta: %0.3f" % (loc, a, b)
+    ## Useful for debugging
+    #print "Location: %0.3f \n Alpha: %0.3f \n Beta: %0.3f" % (loc, a, b)
     return beta.pdf(loc, a, b) / support_width
 
 def compute_rel_posteriors(loc, lmk,
