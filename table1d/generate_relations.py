@@ -81,7 +81,7 @@ def compute_loc_dens(loclmk, reldeg,
     prec = degprecision[deg]
     if rel == 'is-greater':
         # fit entire distribution past point
-        support_width = 1 - lmk
+        support_width = 1.0 - lmk
         lmk = 0.0
         if support_width == 0.0:
             return 0.0
@@ -108,6 +108,7 @@ def compute_loc_dens(loclmk, reldeg,
         peak = min(lmk, 1 - lmk)
         a = (peak*(2*prec - 1) - prec) / (prec*(peak - 1))
         if lmk > 0.5: a,b = b,a
+    loc = loc * 0.99 + 0.00001
     return beta.pdf(loc, a, b) / support_width
 
 def compute_rel_posteriors(loc, lmk,
@@ -148,7 +149,7 @@ def compute_rel_posteriors(loc, lmk,
     posterior = joint / sum(joint)
     if verbose:
         for j in range(numpairs):
-            print "%-25s: \t %-6.2f" % (str(reldegs[j]), posterior[j])
+            print "%-25s: \t %-6.6f" % (str(reldegs[j]), posterior[j])
     return(reldegs, posterior)
 
 def sample_reldeg(loc, lmk,
