@@ -121,6 +121,28 @@ trigrams = partial(ngrams, n=3)
 
 # NOTE the following functions return a structure built using only POS tags
 
+def tree_to_string(tree):
+    result = tree[0] + ' '
+
+    for chunk in tree[1:]:
+        if isinstance(chunk, list):
+            result += tree_to_string(chunk)
+
+    return result
+
+def tree_to_pairs(tree):
+    pass
+
+def get_tags_list(parse_trees):
+    result = ''
+
+    for tree in parse_trees:
+        result += tree_to_string(tree)
+
+    return result.rstrip()
+
+
+
 def struct_desc(chunk):
     return ' '.join(n[0] for n in chunk)
 
@@ -139,7 +161,7 @@ def lmk_struct(chunk):
             struct.append(n)
     return ' '.join(struct)
 
-
+lmk_struct = get_tags_list
 
 def get_words(chunk):
     return [(' '.join(n[1:]), n[0]) for n in chunk]
@@ -178,13 +200,13 @@ if __name__ == '__main__':
         for rownum,row in enumerate(reader):
             if rownum < startfrom:
                 continue
-        
+
             # print rownum
             # unpack row and convert to the rigth types
             location, phrase, parse = row
             #location = int(location)
             location = eval(location)
-            
+
             # sample landmark, relation and degree
             table = RectangleRepresentation(['table'])
 
@@ -210,8 +232,8 @@ if __name__ == '__main__':
             rel_probabilities = rel_scores/sum(rel_scores)
             index = rel_probabilities.cumsum().searchsorted( random.sample(1) )[0]
             sampled_relation = relations[index]
-            
-            
+
+
             #lmk_name, lmk_loc = sample_landmark(location/100)
             #relation, degree = sample_reldeg(location/100, lmk_loc)
             # parse sentence

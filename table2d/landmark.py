@@ -6,6 +6,7 @@ from planar import BoundingBox
 from planar.line import LineSegment
 from planar.line import Line
 from random import choice
+from speaker import Speaker
 
 
 class Landmark(object):
@@ -15,9 +16,12 @@ class Landmark(object):
         self.parent = parent
         self.descriptions = descriptions
 
+    def __repr__(self):
+        return self.get_description()
+
     def distance_to(self, point):
-        projected = self.parent.project_point(point)
-        return self.representation.distance_to(projected)
+        if self.parent: point = self.parent.project_point(point)
+        return self.representation.distance_to(point)
 
     def get_description(self):
         desc = 'the ' + choice(self.descriptions)
@@ -112,11 +116,11 @@ class LineRepresentation(AbstractRepresentation):
 
 
 class RectangleRepresentation(AbstractRepresentation):
-    def __init__(self, descriptions=['rectangle']):
+    def __init__(self, rect=BoundingBox([Vec2(0, 0), Vec2(1, 2)]), descriptions=['rectangle']):
         super(RectangleRepresentation, self).__init__(descriptions)
 
         # creates an elongated rectangle pointing upwards
-        self.rect = BoundingBox([Vec2(0, 0), Vec2(1, 2)])
+        self.rect = rect
         self.alt_representations = [LineRepresentation('width',
                                                         LineSegment.from_points([Vec2(self.rect.min_point.x, self.rect.center.y),
                                                                                  Vec2(self.rect.max_point.x, self.rect.center.y)]),
@@ -148,7 +152,19 @@ class RectangleRepresentation(AbstractRepresentation):
         return point
 
     def distance_to(self, point):
-        return 0
+        return min([lmk.representation.distance_to(point) for lmk in self.landmarks.values()])
+
+
+
+class Scene(object):
+    def __init__(self):
+        self.landmarks = {}
+
+    def add_landmark(self, lmk):
+        self.landmarks[lmk.name] = lmk
+
+    def set_viewer_location(self, point):
+        self.view_loc = point
 
 
 if __name__ == '__main__':
@@ -164,22 +180,47 @@ if __name__ == '__main__':
         # print 'Distance from POI to End landmark is %f' % l.landmarks['end'].distance_to(poi)
         # print 'Distance from POI to Mid landmark is %f' % l.landmarks['mid'].distance_to(poi)
 
-        r = RectangleRepresentation(['table'])
-        lmk = r.landmarks['l_edge']
-        print lmk.get_description()
-        print lmk.representation.landmarks['end'].get_description()
-        print r.landmarks['ul_corner'].get_description()
+        speaker = Speaker(Vec2(5.5,5))
+        scene = Scene()
 
-        print r.landmarks['ul_corner'].distance_to( Vec2(0,0) )
+        table = Landmark('table',
+                         RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(6,7)]), descriptions=['table', 'table surface']),
+                         None,
+                         ['table', 'table surface'])
 
-        representations = [r]
-        representations.extend(r.get_alt_representations())
+        obj1 = Landmark('obj1',
+                         RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(5.1,5.1)])),
+                         None,
+                         ['cup', 'blue cup'])
 
-        location = Vec2(0,0)
-        landmarks_distances = []
-        for representation in representations:
-            for lmk in representation.get_landmarks():
-                landmarks_distances.append([lmk, lmk.distance_to(location)])
+        obj2 = Landmark('obj2',
+                         RectangleRepresentation(rect=BoundingBox([Vec2(5.5,6), Vec2(5.6,6.1)])),
+                         None,
+                         ['bottle'])
+
+        scene.add_landmark(table)
+        scene.add_landmark(obj1)
+        scene.add_landmark(obj2)
+
+        location = Vec2(5.3, 5.5)
+        speaker.describe(location, scene)
+
+        # r = RectangleRepresentation(['table'])
+        # lmk = r.landmarks['l_edge']
+        # print lmk.get_description()
+        # print lmk.representation.landmarks['end'].get_description()
+        # print r.landmarks['ul_corner'].get_description()
+
+        # print r.landmarks['ul_corner'].distance_to( Vec2(0,0) )
+
+        # representations = [r]
+        # representations.extend(r.get_alt_representations())
+
+        # location = Vec2(0,0)
+        # landmarks_distances = []
+        # for representation in representations:
+        #     for lmk in representation.get_landmarks():
+        #         landmarks_distances.append([lmk, lmk.distance_to(location)])
 
         # print 'Distance from POI to LLCorner landmark is %f' % r.landmarks['ll_corner'].distance_to(poi)
         # print 'Distance from POI to URCorner landmark is %f' % r.landmarks['ur_corner'].distance_to(poi)
