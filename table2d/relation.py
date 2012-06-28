@@ -25,3 +25,7 @@ class Relation(object):
         adverb_index = adverb_probabilities.cumsum().searchsorted( sample(1) )[0]
         adverb = adverbs[adverb_index]
         return adverb + preposition
+
+class RelationSet(object):
+    def __init__(self):
+        pass

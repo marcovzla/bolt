@@ -1,14 +1,15 @@
-from relations import relations
-from numpy import array, random
+from relations import DistanceRelationSet, ContainmentRelationSet
+from numpy import array, random, arange, zeros, indices
+from random import choice
 from matplotlib import pyplot as plt
 from landmark import PointRepresentation, LineRepresentation, RectangleRepresentation
+from planar import Vec2, BoundingBox
 
 class Speaker(object):
     def __init__(self, location):
         self.location = location
 
     def describe(self, poi, scene):
-        epsilon = 0.000001
         scenes = scene.get_child_scenes(poi) + [scene]
         print str(len(scenes)) + str(scenes)
 
@@ -16,44 +17,58 @@ class Speaker(object):
 
         for s in scenes:
             for scene_lmk in s.landmarks.values():
-                landmarks_distances.append([s, scene_lmk, scene_lmk.distance_to(poi)])
+                landmarks_distances.append([s, scene_lmk])
 
-                representations = []
+                representations = [scene_lmk.representation]
                 representations.extend(scene_lmk.representation.get_alt_representations())
 
                 for representation in representations:
                     for lmk in representation.get_landmarks():
-                        landmarks_distances.append([s, lmk, lmk.distance_to(poi)])
+                        landmarks_distances.append([s, lmk])
 
-        sceness, landmarks, distances = zip( *landmarks_distances )
-        print landmarks_distances
-        scores = 1.0/(array(distances)**1.5 + epsilon)
-        lm_probabilities = scores/sum(scores)
-        index = lm_probabilities.cumsum().searchsorted( random.sample(1) )[0]
+        sceness, landmarks= zip( *landmarks_distances )
+        # for ld in landmarks_distances:
+        #     print ld
+
+        relset = choice([DistanceRelationSet,ContainmentRelationSet])()
+        index = relset.sample_landmark(landmarks, poi)
+       
         sampled_scene = sceness[index]
         sampled_landmark = landmarks[index]
 
-        rel_scores = []
-        for relation in relations:
-            rel_scores.append( relation.probability(poi, sampled_landmark) )
-        rel_scores = array(rel_scores)
-        rel_probabilities = rel_scores/sum(rel_scores)
-        index = rel_probabilities.cumsum().searchsorted( random.sample(1) )[0]
-        sampled_relation = relations[index]
+        
+        sampled_relation = relset.sample_relation(sampled_landmark, poi)
 
-        print poi,';', sampled_relation.get_description() + " " + sampled_landmark.get_description(self.location)
-        self.visualize(sampled_scene, poi, sampled_landmark)
+        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(self.location)
+        print description
+        self.visualize(sampled_scene, poi, sampled_landmark, sampled_relation, description)
 
 
-    def visualize(self, scene, poi, sampled_landmark):
+    def visualize(self, scene, poi, sampled_landmark, sampled_relation, description):
 
         plt.figure( figsize=(10,5) )
         plt.subplot(1,2,1)
-        plt.axis([4.3,6.7,4.5,7.5])
+        scene_bb = scene.get_bounding_box()
+        scene_bb = scene_bb.inflate( Vec2(scene_bb.width*0.5,scene_bb.height*0.5) )
+        plt.axis([scene_bb.min_point.x, scene_bb.max_point.x, scene_bb.min_point.y, scene_bb.max_point.y])
+
+        step = 0.02
+        xs = arange(scene_bb.min_point.x, scene_bb.max_point.x, step)
+        ys = arange(scene_bb.min_point.y, scene_bb.max_point.y, step)
+
+        probabilities = zeros(  ( len(ys),len(xs) )  )
+        for i,x in enumerate(xs):
+            for j,y in enumerate(ys):
+                probabilities[j,i] = sampled_relation.probability( Vec2(x,y), sampled_landmark )
+
+        x = array( [list(xs-step*0.5)]*len(ys) )
+        y = array( [list(ys-step*0.5)]*len(xs) ).T
+
+        plt.pcolor(x, y, probabilities, cmap = 'jet', edgecolors='none', alpha=0.7)
 
         print 'drawing scene ', len(scene.landmarks)
         for lmk in scene.landmarks.values():
-            print 'drwaing ', lmk.name
+            print 'drawing ', lmk.name
             if isinstance(lmk.representation, RectangleRepresentation):
                 rect = lmk.representation.rect
                 xs = [rect.min_point.x,rect.min_point.x,rect.max_point.x,rect.max_point.x]
@@ -91,7 +106,7 @@ class Speaker(object):
 
         # toprint = str(poi)+' ; '+sampled_relation.get_description() + " " + sampled_landmark.get_description()
         # print toprint
-        # plt.suptitle(toprint)
+        plt.suptitle(description)
 
 
         # plt.subplot(2,2,2)

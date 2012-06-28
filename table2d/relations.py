@@ -1,5 +1,8 @@
 from relation import Relation
 from scipy.stats import norm
+from numpy import array, random
+from random import choice
+from landmark import PointRepresentation
 
 class is_adjacent(Relation):
 
@@ -33,7 +36,7 @@ class is_adjacent(Relation):
                                          ],
                             }
         self.mus = [0.5, 0.3, 0.15]
-        self.ss = [0.01, 0.01, 0.01]
+        self.ss = [0.05, 0.05, 0.05]
 
     def probability(self, location, landmark):
         distance = landmark.distance_to(location)
@@ -72,8 +75,8 @@ class is_not_adjacent(Relation):
                                              ('really ',1.)]
                                          ],
                             }
-        self.mus = [0.8, 0.9, 0.1]
-        self.ss = [0.01, 0.01, 0.01]
+        self.mus = [0.8, 0.9, 1.0]
+        self.ss = [0.05, 0.05, 0.05]
 
     def probability(self, location, landmark):
         distance = landmark.distance_to(location)
@@ -96,7 +99,58 @@ class not_is_not_adjacent(is_not_adjacent):
     def distance_probability(self,distance):
         return 1 - super(not_is_not_adjacent, self).distance_probability(distance)
 
-relations = [is_adjacent(0), is_adjacent(1), is_adjacent(2),
-             not_is_adjacent(0), not_is_adjacent(1), not_is_adjacent(2),
-             is_not_adjacent(0), is_not_adjacent(1), is_not_adjacent(2),
-             not_is_not_adjacent(0), not_is_not_adjacent(1), not_is_not_adjacent(2)]
+
+
+
+class on(Relation):
+    def __init__(self):
+        pass
+
+    def get_description(self):
+        return 'on '
+
+    def probability(self, location, landmark):
+        return landmark.representation.contains( PointRepresentation(location) )
+
+
+class RelationSet(object):
+    def __init__(self):
+        pass
+
+class DistanceRelationSet(RelationSet):
+    def __init__(self):
+        self.epsilon = 0.000001
+        self.relations = [is_adjacent(0), is_adjacent(1), is_adjacent(2),
+                          not_is_adjacent(0), not_is_adjacent(1), not_is_adjacent(2),
+                          is_not_adjacent(0), is_not_adjacent(1), is_not_adjacent(2),
+                          not_is_not_adjacent(0), not_is_not_adjacent(1), not_is_not_adjacent(2)]
+
+    def sample_landmark(self, landmarks, poi):
+        distances = array([lmk.distance_to(poi) for lmk in landmarks])
+        scores = 1.0/(array(distances)**1.5 + self.epsilon)
+        lm_probabilities = scores/sum(scores)
+        index = lm_probabilities.cumsum().searchsorted( random.sample(1) )[0]
+        return index
+
+    def sample_relation(self, sampled_landmark, poi):
+        rel_scores = []
+        for relation in self.relations:
+            rel_scores.append( relation.probability(poi, sampled_landmark) )
+        rel_scores = array(rel_scores)
+        rel_probabilities = rel_scores/sum(rel_scores)
+        index = rel_probabilities.cumsum().searchsorted( random.sample(1) )[0]
+        return self.relations[index]
+
+class ContainmentRelationSet(RelationSet):
+    def __init__(self):
+        self.relations = [on()]
+
+    def sample_landmark(self, landmarks, poi):
+        on_lmks = []
+        for i,lmk in enumerate(landmarks):
+            if self.relations[0].probability(poi,lmk):
+                on_lmks.append( i )
+        return choice(on_lmks)
+
+    def sample_relation(self, sampled_landmark, poi):
+        return self.relations[0]
