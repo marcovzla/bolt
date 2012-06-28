@@ -1,9 +1,9 @@
 from __future__ import division
 
 from numpy import *
-from numpy.random import multinomial
-from scipy.stats import *
-from itertools import *
+from scipy.stats import beta, norm
+from itertools import product
+from functools import partial
 
 def categorical_sample(values, probs):
     index = random.multinomial(1, probs).nonzero()[0][0]
@@ -113,7 +113,7 @@ def compute_loc_dens(loclmk, reldeg,
     #print "Location: %0.3f \n Alpha: %0.3f \n Beta: %0.3f" % (loc, a, b)
     return beta.pdf(loc, a, b) / support_width
 
-def compute_rel_posteriors(loc, lmk,
+def compute_rel_posteriors(lmk,loc,
                            rels = ['is-adjacent', 'is-not-adjacent', 'is-greater', 'is-less'],
                            rel_prior = array([1,1,1,1]),
                            degs = [0,1,2],
@@ -154,7 +154,7 @@ def compute_rel_posteriors(loc, lmk,
             print "%-25s: \t %-6.6f" % (str(reldegs[j]), posterior[j])
     return(reldegs, posterior)
 
-def sample_reldeg(loc, lmk,
+def sample_reldeg(lmk,loc,
                   rels = ['is-adjacent', 'is-not-adjacent', 'is-greater', 'is-less'],
                   rel_prior = array([1,1,1,1]),
                   degs = [0,1,2],
@@ -171,7 +171,7 @@ def sample_reldeg(loc, lmk,
     degs : (int list) degrees being considered (keys of 
         deglocation and degprecision args of compute_loc_dens)
     """ 
-    reldegs, posterior = compute_rel_posteriors(loc,lmk,
+    reldegs, posterior = compute_rel_posteriors(lmk,loc,
                                                 rels, rel_prior,
                                                 degs, deg_prior)
     # This seems inefficient
@@ -189,3 +189,22 @@ def generate_relation(loc, lmk_names = ['beginning', 'middle', 'end'],
     reldeg = sample_reldeg(loc, lmk_loc, rels, rel_prior, degs, deg_prior)
     return(lmk_name, reldeg)
 
+def get_lmk_rel_probs(loc, lmk_names = ['beginning','middle','end'],
+                      lmk_locs = array([0.0, 0.5, 1.0]),
+                      lmk_prior = array([1,1,1]),
+                      rels = ['is-adjacent', 'is-not-adjacent', 'is-greater', 'is-less'],
+                      rel_prior = array([1,1,1,1]),
+                      degs = [0,1,2],
+                      deg_prior = array([1,1,1]),
+                      sigma = 1/4):
+    labels = list(product(lmk_names, rels, degs))
+    lmk_probs = compute_landmark_posteriors(loc, lmk_names, lmk_locs, lmk_prior, sigma)[1]
+    get_rel_posteriors = partial(compute_rel_posteriors, loc = loc, rels = rels,
+                                 rel_prior = rel_prior, degs = degs, deg_prior = deg_prior)
+    all_rel_probs = concatenate([map(get_rel_posteriors, lmk_locs)[k][1] for k in range(len(lmk_names))])
+    joint_probs = concatenate([lmk_probs]*len(rels)*len(degs)) * all_rel_probs
+    table = [(labels[i], joint_probs[i]) for i in range(len(labels))]
+    return(table)
+    
+    
+    
