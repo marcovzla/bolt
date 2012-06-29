@@ -9,30 +9,30 @@ class is_adjacent(Relation):
     def __init__(self, degree):
         super(is_adjacent,self).__init__(degree)
         self.descriptions = {('near', (1.,1.,1.) ): [
-                                            [('somewhat ',1.),
-                                             ('pretty ',1.),
-                                             ('fairly ',1.)],
-                                            [('',1.),
-                                             ('rather ',1.)],
-                                            [('very ',1.),
-                                             ('quite ',1.),
-                                             ('really ',1.)]
+                                            [['somewhat ',1.],
+                                             ['pretty ',1.],
+                                             ['fairly ',1.]],
+                                            [['',1.],
+                                             ['rather ',1.]],
+                                            [['very ',1.],
+                                             ['quite ',1.],
+                                             ['really ',1.]]
                                          ],
                              ('close to', (1.,1.,1.) ): [
-                                            [('somewhat ',1.),
-                                             ('pretty ',1.),
-                                             ('fairly ',1.)],
-                                            [('',1),
-                                             ('rather ',1.)],
-                                            [('very ',1.),
-                                             ('quite ',1.),
-                                             ('really ',1.)]
+                                            [['somewhat ',1.],
+                                             ['pretty ',1.],
+                                             ['fairly ',1.]],
+                                            [['',1],
+                                             ['rather ',1.]],
+                                            [['very ',1.],
+                                             ['quite ',1.],
+                                             ['really ',1.]]
                                          ],
                              ('at', (1.,1.,1.) ): [
-                                            [('almost ',1.),
-                                             ('nearly ',1.)],
-                                            [('',1.)],
-                                            [('squarely ',1.)]
+                                            [['almost ',1.],
+                                             ['nearly ',1.]],
+                                            [['',1.]],
+                                            [['squarely ',1.]]
                                          ],
                             }
         self.mus = [0.5, 0.3, 0.15]
@@ -47,8 +47,12 @@ class is_adjacent(Relation):
 
 class not_is_adjacent(is_adjacent):
 
-    def get_description(self):
-        return "not " + super(not_is_adjacent, self).get_description()
+    def __init__(self, degree):
+        super(not_is_adjacent,self).__init__(degree)
+        for key,value in self.descriptions.items():
+            for degree in value:
+                for adverb in degree:
+                    adverb[0] = 'not '+adverb[0]
 
     def probability(self, location, landmark):
         # Hack to not say "not somewhat near"
@@ -65,14 +69,14 @@ class is_not_adjacent(Relation):
     def __init__(self, degree):
         super(is_not_adjacent,self).__init__(degree)
         self.descriptions = {('far from', (1.,1.,1.) ): [
-                                            [('somewhat ',1.),
-                                             ('pretty ',1.),
-                                             ('fairly ',1.)],
-                                            [('',1.),
-                                             ('rather ',1.)],
-                                            [('very ',1.),
-                                             ('quite ',1.),
-                                             ('really ',1.)]
+                                            [['somewhat ',1.],
+                                             ['pretty ',1.],
+                                             ['fairly ',1.]],
+                                            [['',1.],
+                                             ['rather ',1.]],
+                                            [['very ',1.],
+                                             ['quite ',1.],
+                                             ['really ',1.]]
                                          ],
                             }
         self.mus = [0.8, 0.9, 1.0]
@@ -87,8 +91,12 @@ class is_not_adjacent(Relation):
 
 class not_is_not_adjacent(is_not_adjacent):
 
-    def get_description(self):
-        return "not " + super(not_is_not_adjacent, self).get_description()
+    def __init__(self, degree):
+        super(not_is_not_adjacent,self).__init__(degree)
+        for key,value in self.descriptions.items():
+            for degree in value:
+                for adverb in degree:
+                    adverb[0] = 'not '+adverb[0]
 
     def probability(self, location, landmark):
         if self.degree == 0:
@@ -107,10 +115,13 @@ class on(Relation):
         pass
 
     def get_description(self):
-        return 'on '
+        return 'on'
+
+    def get_all_descriptions(self):
+        return [self.get_description()]
 
     def probability(self, location, landmark):
-        return landmark.representation.contains( PointRepresentation(location) )
+        return float(landmark.representation.contains( PointRepresentation(location) ))
 
 
 class RelationSet(object):
