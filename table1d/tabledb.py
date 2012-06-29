@@ -11,6 +11,18 @@ metadata.bind.echo = False
 
 
 
+# like Django's `get_or_create`
+def get_or_create(cls, defaults={}, **params):
+    obj = cls.get_by(**params)
+    if not obj:
+        params.update(defaults)
+        obj = cls(**params)
+    return obj
+
+Entity.get_or_create = classmethod(get_or_create)
+
+
+
 class Context(Entity):
     using_options(tablename='contexts')
     ## location = Field(Integer)
@@ -20,16 +32,11 @@ class Context(Entity):
     trigrams = OneToMany('Trigram')
 
     def __repr__(self):
-        print '(%s, %d) %s' % (self.relation.relation, self.relation.degree,
-                               self.landmark.landmark_name)
+        return '(%s, %d) %s' % (
+                self.relation.relation,
+                self.relation.degree,
+                self.landmark.landmark_name)
 
-    # like Django's `get_or_create`
-    @classmethod
-    def get_or_create(cls, **params):
-        result = cls.get_by(**params)
-        if not result:
-            result = cls(**params)
-        return result
 
 
 class RelationContext(Entity):
@@ -40,12 +47,6 @@ class RelationContext(Entity):
     words = OneToMany('Word')
     expansions = OneToMany('PhraseExpansion')
 
-    @classmethod
-    def get_or_create(cls, **params):
-        result = cls.get_by(**params)
-        if not result:
-            result = cls(**params)
-        return result
 
 
 class LandmarkContext(Entity):
@@ -56,12 +57,6 @@ class LandmarkContext(Entity):
     words = OneToMany('Word')
     expansions = OneToMany('PhraseExpansion')
 
-    @classmethod
-    def get_or_create(cls, **params):
-        result = cls.get_by(**params)
-        if not result:
-            result = cls(**params)
-        return result
 
 
 class Phrase(Entity):
@@ -70,15 +65,9 @@ class Phrase(Entity):
     role = Field(String)
     expansion = OneToMany('PhraseExpansion')
     words = OneToMany('Word')
-    
-    @classmethod
-    def get_or_create(cls, **params):
-        result = cls.get_by(**params)
-        if not result:
-            result = cls(**params)
-        return result
 
-    
+
+
 class PhraseExpansion(Entity):
     using_options(tablename='phrase_expansions')
     expansion = Field(String)
@@ -89,18 +78,13 @@ class PhraseExpansion(Entity):
     context = ManyToOne('Context')
 
 
+
 class PartOfSpeech(Entity):
     using_options(tablename='parts_of_speech')
     pos = Field(String)
     role = Field(String)
     words = OneToMany('Word')
-    
-    @classmethod
-    def get_or_create(cls, **params):
-        result = cls.get_by(**params)
-        if not result:
-            result = cls(**params)
-        return result
+
 
 
 class Word(Entity):
@@ -112,7 +96,8 @@ class Word(Entity):
     relation_context = ManyToOne('RelationContext')
     landmark_context = ManyToOne('LandmarkContext')
     context = ManyToOne('Context')
-    
+
+
 
 class Bigram(Entity):
     using_options(tablename='bigrams')
@@ -121,12 +106,15 @@ class Bigram(Entity):
     context = ManyToOne('Context')
 
 
+
 class Trigram(Entity):
     using_options(tablename='trigrams')
     word1 = Field(String)
     word2 = Field(String)
     word3 = Field(String)
     context = ManyToOne('Context')
+
+
 
 setup_all()
 
