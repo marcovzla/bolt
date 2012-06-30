@@ -7,116 +7,87 @@ import sys
 from tabledb import *
 from generate_relations import *
 from numpy import *
-from ast import literal_eval
 
-def get_context(loc, meaning = ()):
-    if len(meaning):
-        rel,deg,lmk_name,lmk_loc = meaning
-    else:
-        lmk_name, lmk_loc = sample_landmark(loc)
-        rel, deg = sample_reldeg(loc, lmk_loc)
-    rel_ctx = RelationContext.get_by(
-        relation = rel,
-        degree = deg)
-    lmk_ctx = LandmarkContext.get_by(
-        landmark_name = lmk_name,
-        landmark_location = lmk_loc)
-    ctx = Context.get_by(
-        relation = rel_ctx,
-        landmark = lmk_ctx)
+
+
+def get_meaning(loc):
+    """sample landmark and degree for given location"""
+    lmk_name, lmk_loc = sample_landmark(loc)
+    rel, deg = sample_reldeg(loc, lmk_loc)
     print "Landmark: %s" % lmk_name
     print "Relation: %s" % rel
     print "Degree: %s" % deg
-    return(rel_ctx, lmk_ctx, ctx)
+    # we don't really care about the landmark name
+    return lmk_loc, rel, deg
 
-def get_expansion(rel_ctx, lmk_ctx, ctx, phr, role):
-    phrase = Phrase.get_by(phrase = phr)
-    ## exp_db = PhraseExpansion.query.filter_by(parent = phrase,
-    ##                                          context = ctx)
-    ## num_exp = exp_db.count()
-    ## if num_exp == 0:
-    if role == 'rel':
-        exp_db = PhraseExpansion.query.filter_by(parent = phrase,
-                                                 relation_context = rel_ctx)
-    else:
-        exp_db = PhraseExpansion.query.filter_by(parent = phrase,
-                                                 landmark_context = lmk_ctx)
-    num_exp = exp_db.count()
+
+
+def get_expansion(phr, role, lmk=None, rel=None, deg=None):
+    """sample an expansion from the db"""
+    expansions = Phrase.get_expansions(lmk=lmk, rel=rel, deg=deg, role=role, parent=phr)
+    num_exp = expansions.count()
+
     if num_exp == 0:
-        exp_db = PhraseExpansion.query.filter_by(parent = phrase)
-        num_exp = exp_db.count()
-    ## else:
-    ##     exp_db = PhraseExpansion.query.filter_by(parent = phrase,
-    ##                                              context = ctx)
-    expn = categorical_sample(exp_db.all(), [1.0 / num_exp] * num_exp).expansion
-    print "Expanding %s to %s" % (phr, expn)
-    return(expn)
+        # one more chance
+        expansions = Phrase.get_expansions(parent=phr)
+        num_exp = expansions.count()
 
-def get_words(rel_ctx, lmk_ctx, ctx, phr, expn, role):
+    expn = categorical_sample(expansions, [1/num_exp] * num_exp).expansion
+    print "Expanding %s to %s" % (phr, expn)
+    return expn
+
+
+
+def get_words(phr, role, expn, lmk=None, rel=None, deg=None):
+    """returns words for `expn`"""
     words = []
-    phrase = Phrase.get_by(phrase = phr)
-    for n in literal_eval(expn):
+    for n in expn.split():
         if n in ['REL', 'LMK', 'PP', 'OFNP', 'OFNP1', 'OFNP2', 'NP']:
-            expansion = get_expansion(rel_ctx, lmk_ctx, ctx, n, role)
-            words += get_words(rel_ctx, lmk_ctx, ctx, n, expansion, role)
+            # expand!
+            expansion = get_expansion(n, role, lmk, rel, deg)
+            words += get_words(n, role, expansion, lmk, rel, deg)
         else:
-            pos = PartOfSpeech.get_by(pos = n, role = role)
-            ## w_db = Word.query.filter_by(
-            ##     phrase = phrase,
-            ##     pos = pos,
-            ##     relation_context = rel_ctx,
-            ##     landmark_context = lmk_ctx,
-            ##     context = ctx)
-            ## num_w = w_db.count()
-            ## if num_w == 0:
-            if role == 'rel':
-                w_db = Word.query.filter_by(
-                    phrase = phrase,
-                    pos = pos,
-                    relation_context = rel_ctx)
-                num_w = w_db.count()
-            else:
-                w_db = Word.query.filter_by(
-                    phrase = phrase,
-                    pos = pos,
-                    landmark_context = lmk_ctx)
-                num_w = w_db.count()
-            w = categorical_sample(w_db.all(), [1.0 / num_w] * num_w).word
-            words += [w]
+            w_db = Word.get_words(pos=n, role=role, phr=phr, lmk=lmk, rel=rel, deg=deg)
+            num_w = w_db.count()
+            w = categorical_sample(w_db, [1/num_w] * num_w).word
+            words.append(w)
     print "Expanding %s to %s" % (expn, words)
     return words
 
-## if __name__ == '__main__':
-##     import optparse
-##     p = optparse.OptionParser()
-##     p.add_option('--location', '-l', default=0.5)
-##     opts, args = p.parse_args()
 
-def generate_sentence(loc, meaning = ()):
-    if len(meaning):
+
+def generate_sentence(loc, meaning=None):
+    if meaning:
         try:
-            rc,lc,c = get_context(None, meaning)
+            lmk, rel, deg = meaning
         except ValueError:
-            raise "Meaning has the wrong number of pieces"
-            
+            raise Exception("Meaning has the wrong number of pieces")
     else:
-        rc,lc,c = get_context(loc)
-    rs = get_expansion(rc,lc,c,'REL','rel')
-    ls = get_expansion(rc,lc,c,'LMK','lmk')
-    rw = get_words(rc,lc,c,'REL',rs,'rel')
-    lw = get_words(rc,lc,c,'LMK',ls,'lmk')
+        lmk, rel, deg = get_meaning(loc)
+
+    # get expansion for meaning
+    rs = get_expansion('REL', 'rel', rel=rel, deg=deg)
+    ls = get_expansion('LMK', 'lmk', lmk=lmk)
+
+    # get words for expansions
+    rw = get_words('REL', 'rel', rs, rel=rel, deg=deg)
+    lw = get_words('LMK', 'lmk', ls, lmk=lmk)
+
+    # build sentence
     sentence = ' '.join(rw + lw)
     print sentence
     return sentence
+
+
 
 if __name__ == '__main__':
     import getopt
     opts, extraparams = getopt.getopt(sys.argv[1:], 'm:l:', ['meaning','location'])
     location = None
-    meaning = ()
+    meaning = None
     for o,p in opts:
         if o in ['-m', '--meaning']:
             meaning = p
         elif o in ['-l', '--location']:
             location = float(p)
-    generate_sentence(location,meaning)
+    generate_sentence(location, meaning)

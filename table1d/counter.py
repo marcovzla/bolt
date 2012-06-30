@@ -8,6 +8,7 @@ import csv
 import random
 import pprint
 import json
+from itertools import product
 
 from tabledb import *
 from generate_relations import sample_landmark, sample_reldeg
@@ -29,6 +30,7 @@ if __name__ == '__main__':
         elif o in ['-i', '--iterations']:
             iters = int(p)
 
+    print 'appending...'
     with open('sentences2.csv') as f:
         reader = csv.reader(f)
         next(reader)  # skip headers
@@ -40,14 +42,14 @@ if __name__ == '__main__':
             location, region, nearfar, precise, utterance, parse = row
             location = int(location) / 100.0
             # precise = (precise == 'T')
+            # parse sentence
+            # parse = parse_sentence(phrase)['parsetree']
+            rel_words, lmk_words, rel_phrases, lmk_phrases = modify_parse(parse)
             # sample landmark, relation and degree
             for j in range(iters):
                 lmk_name, lmk_loc = sample_landmark(location)
                 relation, degree = sample_reldeg(location, lmk_loc)
-                # parse sentence
-                # parse = parse_sentence(phrase)['parsetree']
-                rel_words, lmk_words, rel_phrases, lmk_phrases = modify_parse(parse)
-                
+
                 if verbose:
                     print '-' * 70
                     print 'Utterance: %r' % utterance
@@ -69,40 +71,26 @@ if __name__ == '__main__':
 
                 # get context from db or create a new one
 
-                rel_ctx = RelationContext.get_or_create(
-                    relation=relation,
-                    degree=degree)
-
-                lmk_ctx = LandmarkContext.get_or_create(
-                    landmark_name = lmk_name,
-                    landmark_location = lmk_loc)
-
-                ctx = Context.get_or_create(
-                    ## location = location,
-                    relation = rel_ctx,
-                    landmark = lmk_ctx)
+                ctx = Context(location=location,
+                              landmark=lmk_loc,
+                              landmark_name=lmk_name,
+                              relation=relation,
+                              degree=degree)
 
                 # store structures
                 for phr,exp in rel_phrases:
                     role = 'rel'
-                    rs = PhraseExpansion()
-                    rs.parent = Phrase.get_or_create(phrase = str(phr), role = str(role))
-                    rs.expansion = str(exp)
-                    rs.role = str(role)
-                    rs.context = ctx
-                    rs.relation_context = rel_ctx
-                    rs.landmark_context = lmk_ctx
+                    rs = Phrase(expansion=' '.join(exp),
+                                role=role,
+                                parent=phr,
+                                context=ctx)
 
                 for phr,exp in lmk_phrases:
                     role = 'lmk'
-                    ls = PhraseExpansion()
-                    ls.parent = Phrase.get_or_create(phrase = str(phr), role = str(role))
-                    ls.expansion = str(exp)
-                    ls.role = str(role)
-                    ls.context = ctx
-                    ls.relation_context = rel_ctx
-                    ls.landmark_context = lmk_ctx
-
+                    ls = Phrase(expansion=' '.join(exp),
+                                role=role,
+                                parent=phr,
+                                context=ctx)
 
                 # store words with their POS tag
                 # note that these are modified POS tags
@@ -115,29 +103,19 @@ if __name__ == '__main__':
 
                 for w,pos,phr in rel_words:
                     role = 'rel'
-                    phrase = Phrase.get_or_create(phrase = str(phr), role = str(role))
-                    part_of_speech = PartOfSpeech.get_or_create(pos = str(pos), role = str(role))
-                    word = Word()
-                    word.role = str(role)
-                    word.word = str(w)
-                    word.pos = part_of_speech
-                    word.phrase = phrase
-                    word.relation_context = rel_ctx
-                    word.landmark_context = lmk_ctx
-                    word.context = ctx
+                    word = Word(word=w,
+                                pos=pos,
+                                role=role,
+                                phrase=phr,
+                                context=ctx)
 
                 for w,pos,phr in lmk_words:
                     role = 'lmk'
-                    phrase = Phrase.get_or_create(phrase = str(phr), role = str(role))
-                    part_of_speech = PartOfSpeech.get_or_create(pos = str(pos), role = str(role))
-                    word = Word()
-                    word.role = str(role)
-                    word.word = str(w)
-                    word.pos = part_of_speech
-                    word.phrase = phrase
-                    word.relation_context = rel_ctx
-                    word.landmark_context = lmk_ctx
-                    word.context = ctx
+                    word = Word(word=w,
+                                pos=pos,
+                                role=role,
+                                phrase=phr,
+                                context=ctx)
 
                 ## # store bigrams and trigrams
                 ## for w1,w2 in bigrams(utterance):
@@ -153,5 +131,84 @@ if __name__ == '__main__':
                 ##     tri.word3 = w3
                 ##     tri.context = ctx
 
-    # save all
-    session.commit()
+            # commit each sentence
+            session.commit()
+
+
+    sys.exit()
+    print 'counting...'
+    uniq_words = [row[0] for row in session.query(Word.word).group_by(Word.word)]
+    uniq_pos = [row[0] for row in session.query(Word.pos).group_by(Word.pos)]
+    uniq_lmks = [row[0] for row in session.query(Context.landmark).group_by(Context.landmark)]
+    uniq_rels = [row[0] for row in session.query(Context.relation).group_by(Context.relation)]
+    uniq_degs = [row[0] for row in session.query(Context.degree).group_by(Context.degree)]
+    uniq_exp = [row[0] for row in session.query(Phrase.expansion).group_by(Phrase.expansion)]
+    uniq_roles = [row[0] for row in session.query(Phrase.role).group_by(Phrase.role)]
+    uniq_phrs = [row[0] for row in session.query(Phrase.parent).group_by(Phrase.parent)]
+
+    # word probabilities
+    for w,pos,phr,lmk,rel,deg in product(uniq_words, uniq_pos, uniq_phrs, uniq_lmks, uniq_rels, uniq_degs):
+        # pw = Pword.calc_prob(word=w)
+        # print pw
+
+        # pw = Pword.calc_prob(word=w, pos=pos)
+        # print pw
+
+        # pw = Pword.calc_prob(word=w, phr=phr)
+        # print pw
+
+        # pw = Pword.calc_prob(word=w, lmk=lmk)
+        # print pw
+
+        # pw = Pword.calc_prob(word=w, rel=rel)
+        # print pw
+
+        # pw = Pword.calc_prob(word=w, deg=deg)
+        # print pw
+
+        # pw = Pword.calc_prob(word=w, rel=rel, deg=deg)
+        # print pw
+
+        # pw = Pword.calc_prob(word=w, lmk=lmk, rel=rel, deg=deg)
+        # print pw
+
+        pw = Pword.calc_prob(word=w, pos=pos, phr=phr, lmk=lmk)
+        print pw
+
+        pw = Pword.calc_prob(word=w, pos=pos, phr=phr, rel=rel, deg=deg)
+        print pw
+
+        # pw = Pword.calc_prob(word=w, pos=pos, phr=phr, lmk=lmk, rel=rel, deg=deg)
+        # print pw
+
+        session.commit()
+
+    for e,phr,lmk,rel,deg in product(uniq_exp, uniq_phrs, uniq_lmks, uniq_rels, uniq_degs):
+        # pe = Pexpansion.calc_prob(expansion=e)
+        # print pe
+
+        # pe = Pexpansion.calc_prob(expansion=e, parent=phr)
+        # print pe
+
+        # pe = Pexpansion.calc_prob(expansion=e, lmk=lmk)
+        # print pe
+
+        # pe = Pexpansion.calc_prob(expansion=e, rel=rel)
+        # print pe
+
+        # pe = Pexpansion.calc_prob(expansion=e, deg=deg)
+        # print pe
+
+        # pe = Pexpansion.calc_prob(expansion=e, rel=rel, deg=deg)
+        # print pe
+
+        # pe = Pexpansion.calc_prob(expansion=e, lmk=lmk, rel=rel, deg=deg)
+        # print pe
+
+        pe = Pexpansion.calc_prob(expansion=e, parent=phr, lmk=lmk)
+        print pe
+
+        pe = Pexpansion.calc_prob(expansion=e, parent=phr, rel=rel, deg=deg)
+        print pe
+
+        session.commit()
