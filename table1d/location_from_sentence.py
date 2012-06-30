@@ -42,16 +42,16 @@ def get_expansions_prob(phrase_tuples, role, lmk=None, rel=None, deg=None):
     prob = 1.0
     for phr, expn in phrase_tuples:
         expn = ' '.join(expn)
-        pe = Pexpansion.calc_prob(expn, role=role, parent=phr,
+        pe = Pexpansion.probability(expn, role=role, parent=phr,
                                   lmk=lmk, rel=rel, deg=deg)
         # FIXME I have to replace the code commented below
         # if possible.count() == 0:
         #     possible = PhraseExpansion.query.filter_by(parent = phrase)
         #     valid = PhraseExpansion.query.filter_by(parent = phrase,
         #                                             expansion = expansion)
-        if not pe.prob:
+        if not pe:
             return 0.0
-        prob *= pe.prob
+        prob *= pe
     return prob
 
 
@@ -59,11 +59,11 @@ def get_expansions_prob(phrase_tuples, role, lmk=None, rel=None, deg=None):
 def get_words_prob(word_tuples, role, lmk=None, rel=None, deg=None):
     prob = 1.0
     for word,pos,phr in word_tuples:
-        pw = Pword.calc_prob(word, pos=pos, role=role, phr=phr,
+        pw = Pword.probability(word, pos=pos, role=role, phr=phr,
                              lmk=lmk, rel=rel, deg=deg)
-        if not pw.prob:
+        if not pw:
             return 0.0
-        prob *= pw.prob
+        prob *= pw
     return prob
 
 
