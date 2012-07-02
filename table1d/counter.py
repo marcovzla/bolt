@@ -48,7 +48,7 @@ if __name__ == '__main__':
             # sample landmark, relation and degree
             for j in range(iters):
                 lmk_name, lmk_loc = sample_landmark(location)
-                relation, degree = sample_reldeg(location, lmk_loc)
+                relation, degree = sample_reldeg(lmk_loc, location)
 
                 if verbose:
                     print '-' * 70

@@ -30,7 +30,7 @@ def uniquify_distribution(labels, probs):
 def try_meaning():
     loc = random.uniform()
     lmk_name, lmk_loc = sample_landmark(loc)
-    rel, deg = sample_reldeg(loc, lmk_loc)
+    rel, deg = sample_reldeg(lmk_loc, loc)
     ## print "Landmark: %s" % lmk_name
     ## print "Relation: %s" % rel
     ## print "Degree: %s" % deg
