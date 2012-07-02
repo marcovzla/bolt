@@ -45,16 +45,17 @@ if __name__ == '__main__':
     scene.add_landmark(obj2)
     scene.add_landmark(obj3)
 
-    dozen = 12
-    couple = 2
-    for i in range(couple * dozen):
-        location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-        speaker.describe(location, scene)
+    # dozen = 12
+    # couple = 2
+    # for i in range(couple * dozen):
+    #     location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
+    #     speaker.describe(location, scene)
     #speaker.demo(location, scene)
-    # all_desc = speaker.get_all_descriptions(location, scene)
+    location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
+    all_desc = speaker.get_all_descriptions(location, scene)
 
-    # for desc in all_desc:
-    #     print desc
+    for desc in all_desc:
+        print desc
 
     # r = RectangleRepresentation(['table'])
     # lmk = r.landmarks['l_edge']
