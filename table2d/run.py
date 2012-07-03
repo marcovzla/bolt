@@ -3,6 +3,7 @@ from speaker import Speaker
 from planar import Vec2, BoundingBox
 from landmark import RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
 from random import random
+import pickle
 
 if __name__ == '__main__':
     # poi = Vec2(float(sys.argv[1]), 0)
@@ -45,17 +46,28 @@ if __name__ == '__main__':
     scene.add_landmark(obj2)
     scene.add_landmark(obj3)
 
+    # f = open('scene.pickle','wb')
+    # pickle.dump(scene,f)
+    # f.flush()
+    # f.close()
+    # del scene
+    # f = open('scene.pickle','rb')
+    # scene = pickle.load(f)
+
+    perspectives = [ Vec2(5.5,4.5), Vec2(6.5,6.0)]
+    speaker.talk_to_baby(scene, perspectives, how_many_each=10)
+
     # dozen = 12
     # couple = 2
     # for i in range(couple * dozen):
     #     location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
     #     speaker.describe(location, scene)
     #speaker.demo(location, scene)
-    location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-    all_desc = speaker.get_all_descriptions(location, scene)
+    # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
+    # all_desc = speaker.get_all_descriptions(location, scene)
 
-    for desc in all_desc:
-        print desc
+    # for desc in all_desc:
+    #     print desc
 
     # r = RectangleRepresentation(['table'])
     # lmk = r.landmarks['l_edge']

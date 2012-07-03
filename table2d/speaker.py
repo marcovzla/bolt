@@ -57,6 +57,27 @@ class Speaker(object):
         print description
         if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, sampled_relation, description)
 
+    def talk_to_baby(self, scene, perspectives, how_many_each=10000):
+
+        max_recurse_level = 4
+        for recurse_level in range(max_recurse_level):
+            for i in range(how_many_each):
+                perspective = choice(perspectives)
+                self.location = perspective
+                lmk = choice(scene.landmarks.values())
+                level = 0
+                while level < recurse_level:
+                    representations = [lmk.representation]+lmk.representation.get_alt_representations()
+                    landmarks = []
+                    for representation in representations:
+                        landmarks.extend( representation.landmarks.values() )
+                    if len(landmarks) == 0:
+                        break
+                    lmk = choice(landmarks)
+                    level += 1
+                head_on = self.get_head_on_viewpoint(lmk)
+                print perspective, lmk.uuid, lmk.get_description(head_on)
+
     def demo(self, poi, scene):
 
         # Sentence 1

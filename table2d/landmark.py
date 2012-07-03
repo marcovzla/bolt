@@ -6,7 +6,7 @@ from planar import BoundingBox
 from planar.line import LineSegment
 from planar.line import Line
 from random import choice
-
+from uuid import uuid4
 
 class Landmark(object):
     def __init__(self, name, representation, parent, descriptions):
@@ -14,6 +14,7 @@ class Landmark(object):
         self.representation = representation
         self.parent = parent
         self.descriptions = descriptions
+        self.uuid = uuid4()
 
     def __repr__(self):
         return self.name
@@ -92,6 +93,19 @@ class Landmark(object):
 
         return desc
 
+    def fetch_landmark(self, uuid):
+        # print 'Fetching ',uuid, '  My uuid: ',self.uuid
+        if self.uuid == uuid:
+            result = self
+        else:
+            result = None
+            for representation in [self.representation] + self.representation.alt_representations:
+                for landmark in representation.landmarks.values():
+                    result = landmark.fetch_landmark(uuid)
+                    if result:
+                        return result
+        return result
+
 
 class AbstractRepresentation(object):
     def __init__(self, descriptions=[''], alt_of=None):
@@ -101,6 +115,7 @@ class AbstractRepresentation(object):
         self.landmarks = {}
         self.num_dim = -1
         self.alt_of = alt_of
+        self.uuid = uuid4()
 
     def get_primary_axes(self):
         raise NotImplementedError
@@ -396,7 +411,13 @@ class Scene(object):
     def get_bounding_box(self):
         return BoundingBox.from_shapes([lmk.representation.get_geometry() for lmk in self.landmarks.values()])
 
-
+    def fetch_landmark(self, uuid):
+        result = None
+        for landmark in self.landmarks.values():
+            result = landmark.fetch_landmark(uuid)
+            if result:
+                break
+        return result
 
 if __name__ == '__main__':
     viewpoint = Vec2(5.5,4)
