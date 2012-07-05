@@ -10,7 +10,7 @@ import subprocess
 from cStringIO import StringIO
 from table2d.speaker import Speaker
 from planar import Vec2, BoundingBox
-from table2d.landmark import RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
+from table2d.landmark import RectangleRepresentation, Scene, Landmark
 
 
 
@@ -46,6 +46,9 @@ if __name__ == '__main__':
 
 
 
+    print 'building scene...'
+    sys.stdout.flush()
+
     ### setup scene ###
     speaker = Speaker(Vec2(5.5,4.5))
     scene = Scene(3)
@@ -77,6 +80,9 @@ if __name__ == '__main__':
 
 
 
+    print 'generating sentences...'
+    sys.stdout.flush()
+
     # capture stdout because `Speaker.describe` doesn't return the sentence
     # it only prints it
     real_stdout = sys.stdout
@@ -90,21 +96,38 @@ if __name__ == '__main__':
     # restore stdout
     sys.stdout = real_stdout
 
+
+
+    print 'reading output...'
+    sys.stdout.flush()
+
     # get locations and sentences
-    points = []
-    sentences = []
+    locxs = []
+    locys = []
+    sents = []
     for line in fake_stdout.getvalue().splitlines():
         m = re.match(r'^Vec2\((?P<x>[0-9.]+), (?P<y>[0-9.]+)\); (?P<sent>.+)$', line)
         if m:
-            points.append([float(m.group('x')), float(m.group('y'))])
-            sentences.append(m.group('sent'))
+            locxs.append(float(m.group('x')))
+            locys.append(float(m.group('y')))
+            sents.append(m.group('sent'))
+
+
+
+    print 'parsing sentences...'
+    sys.stdout.flush()
 
     # parse sentences
-    parses = parse_sentences(sentences)
+    parses = parse_sentences(sents)
+
+
+
+    print 'writing csv...'
+    sys.stdout.flush()
 
     # write csv file
     with open('sentences.csv', 'wb') as f:
         writer = csv.writer(f)
         writer.writerow(['loc_x', 'loc_y', 'sentence', 'parsetree'])
-        for pt, sent, parse in zip(points, sentences, parses):
-            writer.writerow(pt + [sent, parse])
+        for row in zip(locxs, locys, sents, parses):
+            writer.writerow(row)
