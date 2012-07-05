@@ -1,2 +1,5 @@
 *.pyc
-table1d.db*
+*.db*
+.ropeproject
+*.sublime-workspace
+*.sublime-project
