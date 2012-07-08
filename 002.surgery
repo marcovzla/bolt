@@ -1,0 +1,3 @@
+NP=lmk [ > PP & !<< /.+P/]
+
+relabel lmk SCENE-LANDMARK

@@ -1,0 +1,5 @@
+S1=loc < (/P$/=rel <<- CHILD-LANDMARK=lmk)
+
+move lmk >-1 loc
+relabel rel RELATION
+relabel loc LOCATION

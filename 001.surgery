@@ -1,0 +1,3 @@
+NP=lmk [ < (NP $++ PP) & !> CHILD-LANDMARK ]
+
+relabel lmk CHILD-LANDMARK
