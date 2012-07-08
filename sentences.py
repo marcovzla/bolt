@@ -127,7 +127,7 @@ if __name__ == '__main__':
 
     # write csv file
     with open('sentences.csv', 'wb') as f:
-        writer = csv.writer(f)
+        writer = csv.writer(f, lineterminator='\n')
         writer.writerow(['loc_x', 'loc_y', 'sentence', 'parsetree'])
         for row in zip(locxs, locys, sents, parses):
             writer.writerow(row)
