@@ -1,4 +1,4 @@
-S1=loc < (/P$/=rel <<- CHILD-LANDMARK=lmk)
+S1=loc < (/P$/=rel <<- /LANDMARK$/=lmk)
 
 move lmk >-1 loc
 relabel rel RELATION
