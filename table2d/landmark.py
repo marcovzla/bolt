@@ -149,11 +149,12 @@ class AbstractRepresentation(object):
 
         return 'the ' + choice(self.descriptions)
 
-    def get_landmarks(self):
+    def get_landmarks(self, max_level=-1):
+        if max_level == 0: return []
         result = self.landmarks.values()
 
         for landmark in self.landmarks.values():
-            result.extend( landmark.representation.get_landmarks() )
+            result.extend( landmark.representation.get_landmarks(max_level-1) )
 
         return result
 
