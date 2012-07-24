@@ -17,7 +17,7 @@ class Speaker(object):
         head_on = axis.project(self.location)
         return head_on
 
-    def describe(self, poi, scene, visualize=False):
+    def describe(self, poi, scene, visualize=False, max_level=-1):
         scenes = scene.get_child_scenes(poi) + [scene]
 
         all_landmarks = []
@@ -30,7 +30,7 @@ class Speaker(object):
                 representations.extend(scene_lmk.representation.get_alt_representations())
 
                 for representation in representations:
-                    for lmk in representation.get_landmarks():
+                    for lmk in representation.get_landmarks(max_level):
                         all_landmarks.append([s, lmk])
 
         sceness, landmarks = zip( *all_landmarks )
@@ -158,7 +158,7 @@ class Speaker(object):
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
 
 
-    def get_all_descriptions(self, poi, scene):
+    def get_all_descriptions(self, poi, scene, max_level=-1):
         all_desc = []
         scenes = scene.get_child_scenes(poi) + [scene]
         counter = 0
@@ -168,7 +168,7 @@ class Speaker(object):
                 representations.extend(scene_lmk.representation.get_alt_representations())
 
                 for representation in representations:
-                    for lmk in representation.get_landmarks()+[scene_lmk]: # we have a leaf landmark at current level
+                    for lmk in representation.get_landmarks(max_level)+[scene_lmk]: # we have a leaf landmark at current level
                         head_on = self.get_head_on_viewpoint(lmk)
                         lmk_desc = lmk.get_description(head_on)
 
