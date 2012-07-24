@@ -5,40 +5,15 @@ from scipy.stats import *
 from itertools import *
 from planar import Vec2, Affine
 from planar.line import LineSegment, Ray
-from functools import partial
 from landmark import Landmark, PointRepresentation
 
+
 class Relation(object):
-
-    def __init__(self, degree):
-        self.degree = degree
-        self.descriptions = {}
-
-    def get_description(self):
-        preposition_keys, preposition_scores = zip( *[(key,key[1][self.degree]) for key in self.descriptions.keys()] )
-        preposition_scores = array(preposition_scores)
-        preposition_probabilities = preposition_scores/sum(preposition_scores)
-        preposition_index = preposition_probabilities.cumsum().searchsorted( sample(1) )[0]
-        preposition_key = preposition_keys[preposition_index]
-        preposition = preposition_key[0]
-
-        adverbs, adverb_scores = zip( *self.descriptions[preposition_key][self.degree] )
-        adverb_scores = array(adverb_scores)
-        adverb_probabilities = adverb_scores/sum(adverb_scores)
-        adverb_index = adverb_probabilities.cumsum().searchsorted( sample(1) )[0]
-        adverb = adverbs[adverb_index]
-        return adverb + preposition
-
-    def get_all_descriptions(self):
-        descriptions = []
-
-        for key in self.descriptions.keys():
-            prep = key[0]
-            for adv_k in self.descriptions[key][self.degree]:
-                adverb = adv_k[0]
-                descriptions.append(adverb + prep)
-
-        return descriptions
+    def __init__(self, perspective, landmark, poi, words):
+        self.perspective = perspective
+        self.landmark = landmark
+        self.poi = poi
+        self.words = words
 
 
 class RelationSet(object):
@@ -46,16 +21,21 @@ class RelationSet(object):
         pass
 
 
-
 class Measurement(object):
-    def __init__(self, direction):
-        self.direction = direction
+    def __init__(self, distance, direction=None):
         self.words = {'far': (0.9, 0.05, 1),
                       'close': (0.25, 0.05, -1),
                       'near': (0.4, 0.05, -1)}
         self.degrees = {'': 1, 'not very ': 0.6, 'somewhat ': 0.75, 'very ': 1.5}
 
-    def evaluate(self, adverb, word, distance):
+        self.distance = distance
+        self.direction = direction
+
+        self.best = self.evaluate_all(self.distance)[0]
+        self.degree = self.best[1]
+        self.word = self.best[2]
+
+    def is_applicable(self, adverb, word, distance):
         mu,std,sign = self.words[word]
         mult = self.degrees[adverb]
 
@@ -68,137 +48,143 @@ class Measurement(object):
 
         for word in self.words:
             for adverb in self.degrees:
-                p = self.evaluate(adverb, word, distance)
-                probs.append([p, adverb + word])
+                p = self.is_applicable(adverb, word, distance)
+                probs.append([p, adverb, word])
 
         return sorted(probs, reverse=True)
 
-    def get_best_description(self, distance):
-        return self.evaluate_all(distance)[0][1]
+    def get_description(self):
+        return self.degree + self.word
 
 
 class DistanceRelation(Relation):
-    def __init__(self, words):
-        self.measurement = Measurement(None)
-        self.words = words
+    def __init__(self, perspective, landmark, poi, words):
+        super(DistanceRelation, self).__init__(perspective, landmark, poi, words)
+        self.distance = self.landmark.distance_to(self.poi)
+        self.measurement = Measurement(self.distance)
 
-        self.perspective = None
-        self.landmark = None
-        self.poi = None
-
-    def evaluate(self, perspective, landmark, poi):
-        self.perspective = perspective
-        self.poi = poi
-        self.landmark = landmark
-
-        if not landmark.representation.contains( PointRepresentation(poi) ):
-            self.distance = landmark.distance_to(poi)
+    def is_applicable(self):
+        if not self.landmark.representation.contains( PointRepresentation(self.poi) ):
             return 1.0
         else:
             return 0.0
 
-    def get_distance(self, perspective, landmark, poi):
-        if not (self.perspective == perspective
-                and self.landmark == landmark
-                and self.poi == poi):
-            self.evaluate(perspective, landmark, poi)
-        return self.distance
+    def get_description(self):
+        return self.measurement.get_description() + ' ' + choice(self.words)
 
-    def get_description(self, perspective, landmark, poi):
-        distance = self.get_distance(perspective, landmark, poi)
 
-        return self.measurement.get_best_description(distance) + ' ' + choice(self.words)
+class FromRelation(DistanceRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(FromRelation, self).__init__(perspective, landmark, poi, ['from'])
 
-from_rel = DistanceRelation(['from'])
-to       = DistanceRelation(['to'])
+
+class ToRelation(DistanceRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(ToRelation, self).__init__(perspective, landmark, poi, ['to'])
+
 
 class VeryCloseDistanceRelation(DistanceRelation):
-    def __init__(self, words):
-        super(VeryCloseDistanceRelation,self).__init__(words)
+    def __init__(self, perspective, landmark, poi, words):
+        super(VeryCloseDistanceRelation, self).__init__(perspective, landmark, poi, words)
         self.word = 'close'
         self.adverb = 'very '
 
-    def evaluate(self, perspective, landmark, poi):
-        super(VeryCloseDistanceRelation,self).evaluate(perspective, landmark, poi)
-        return self.measurement.evaluate( self.adverb, self.word, self.distance)
+    def is_applicable(self):
+        return super(VeryCloseDistanceRelation,self).is_applicable() and self.measurement.is_applicable(self.adverb, self.word, self.distance)
 
-    def get_description(self, perspective, landmark, poi):
+    def get_description(self):
         return choice(self.words)
 
-next_to = VeryCloseDistanceRelation(['next to'])
-at      = VeryCloseDistanceRelation(['at'])
-by      = VeryCloseDistanceRelation(['by'])
+
+class NextToRelation(VeryCloseDistanceRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(NextToRelation, self).__init__(perspective, landmark, poi, ['next to'])
+
+
+class AtRelation(VeryCloseDistanceRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(AtRelation, self).__init__(perspective, landmark, poi, ['at'])
+
+
+class ByRelation(VeryCloseDistanceRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(ByRelation, self).__init__(perspective, landmark, poi, ['by'])
 
 
 class ContainmentRelation(Relation):
-    def __init__(self, words):
-        self.words = words
+    def __init__(self, perspective, landmark, poi, words):
+        super(ContainmentRelation, self).__init__(perspective, landmark, poi, words)
 
-    def evaluate(self, perspective, landmark, poi):
-        return float(landmark.representation.contains( PointRepresentation(poi) ))
+    def is_applicable(self):
+        return float(self.landmark.representation.contains( PointRepresentation(self.poi) ))
 
-    def get_description(self, perspective, landmark, poi):
+    def get_description(self):
         return choice(self.words)
 
-on = ContainmentRelation(['on'])
-in_rel = ContainmentRelation(['in'])
 
+class OnRelation(ContainmentRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(OnRelation, self).__init__(perspective, landmark, poi, ['on'])
+
+
+class InRelation(ContainmentRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(InRelation, self).__init__(perspective, landmark, poi, ['in'])
 
 
 class OrientationRelation(Relation):
-    def __init__(self, orientation, words):
+    def __init__(self, perspective, landmark, poi, words, orientation):
+        super(OrientationRelation, self).__init__(perspective, landmark, poi, words)
         self.standard = Vec2(0,1)
         self.orientation = orientation
-        self.measurement = Measurement(orientation)
-        self.words = words
 
-        self.perspective = None
-        self.landmark = None
-        self.poi = None
-
-    def evaluate(self, perspective, landmark, poi):
-        self.perspective = perspective
-        self.landmark = landmark
-        self.poi = poi
-
-        p_segment = LineSegment.from_points( [perspective, landmark.representation.middle] )
+        p_segment = LineSegment.from_points( [self.perspective, self.landmark.representation.middle] )
 
         angle = self.standard.angle_to(p_segment.vector)
         rotation = Affine.rotation(angle)
         o = [self.orientation]
         rotation.itransform(o)
         direction = o[0]
-        orientation = Ray(p_segment.end, direction)
+        self.ori_ray = Ray(p_segment.end, direction)
+        self.projected = self.ori_ray.line.project(poi)
 
-        projected = orientation.line.project(poi)
-        self.distance = orientation.start.distance_to(projected)
-        if orientation.contains_point(projected):
+        self.distance = self.ori_ray.start.distance_to(self.projected)
+        self.measurement = Measurement(self.distance, self.orientation)
+
+    def is_applicable(self):
+        if self.ori_ray.contains_point(self.projected):
             return 1.0
         else:
             return 0.0
 
-    def get_distance(self, perspective, landmark, poi):
-        if not (self.perspective == perspective
-                and self.landmark == landmark
-                and self.poi == poi):
-            self.evaluate(perspective, landmark, poi)
-        return self.distance
+    def get_description(self):
+        return self.measurement.get_description() + ' ' + choice(self.words)
 
-    def get_description(self, perspective, landmark, poi):
-        distance = self.get_distance(perspective, landmark, poi)
 
-        return self.measurement.get_best_description(distance) + ' ' + choice(self.words)
+class InFrontRelation(OrientationRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(InFrontRelation, self).__init__(perspective, landmark, poi, ['in front of'], Vec2(0,-1))
 
-in_front = OrientationRelation( Vec2(0,1), ['in front of'] )
-behind   = OrientationRelation( Vec2(0,-1), ['behind'] )
-left     = OrientationRelation( Vec2(-1,0), ['to the left of'] )
-right    = OrientationRelation( Vec2(1,0), ['to the right of'] )
+
+class BehindRelation(OrientationRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(BehindRelation, self).__init__(perspective, landmark, poi, ['behind'], Vec2(0,1))
+
+
+class LeftRelation(OrientationRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(LeftRelation, self).__init__(perspective, landmark, poi, ['to the left of'], Vec2(-1,0))
+
+
+class RightRelation(OrientationRelation):
+    def __init__(self, perspective, landmark, poi):
+        super(RightRelation, self).__init__(perspective, landmark, poi, ['to the right of'], Vec2(1,0))
 
 
 class DistanceRelationSet(RelationSet):
     def __init__(self):
         self.epsilon = 0.000001
-        self.relations = [from_rel, to, next_to, at, by]
+        self.relations = [FromRelation, ToRelation, NextToRelation, AtRelation, ByRelation]
 
     def sample_landmark(self, landmarks, poi):
         distances = array([lmk.distance_to(poi) for lmk in landmarks])
@@ -209,44 +195,53 @@ class DistanceRelationSet(RelationSet):
 
     def sample_relation(self, perspective, sampled_landmark, poi):
         rel_scores = []
+        rel_instances = []
+
         for relation in self.relations:
-            rel_scores.append( relation.evaluate(perspective, sampled_landmark, poi) )
+            rel_instances.append( relation(perspective, sampled_landmark, poi) )
+            rel_scores.append( rel_instances[-1].is_applicable() )
+
         rel_scores = array(rel_scores)
         rel_probabilities = rel_scores/sum(rel_scores)
         index = rel_probabilities.cumsum().searchsorted( random.sample(1) )[0]
-        return self.relations[index]
+        return rel_instances[index]
 
 
 class ContainmentRelationSet(RelationSet):
     def __init__(self):
-        self.relations = [on, in_rel]
+        self.relations = [OnRelation, InRelation]
 
     def sample_landmark(self, landmarks, poi):
         on_lmks = []
         for i,lmk in enumerate(landmarks):
-            if self.relations[0].evaluate(None, lmk, poi):
+            if self.relations[0](None, lmk, poi).is_applicable():
                 on_lmks.append( i )
         return choice(on_lmks)
 
     def sample_relation(self, perspective, sampled_landmark, poi):
-        return choice(self.relations)
+        return choice(self.relations)(perspective, sampled_landmark, poi)
 
 class OrientationRelationSet(RelationSet):
     def __init__(self):
-        self.relations = [in_front, behind, left, right]
+        self.relations = [InFrontRelation, BehindRelation, LeftRelation, RightRelation]
 
     def sample_landmark(self, landmarks, poi):
         on_lmks = []
+
         for i,lmk in enumerate(landmarks):
             if not lmk.representation.contains( PointRepresentation(poi) ):
                 on_lmks.append( i )
+
         return choice(on_lmks)
 
     def sample_relation(self, perspective, sampled_landmark, poi):
         rels = []
+
         for rel in self.relations:
-            if rel.evaluate(perspective, sampled_landmark, poi):
-                rels.append(rel)
+            rel_instance = rel(perspective, sampled_landmark, poi)
+            if rel_instance.is_applicable():
+                rels.append(rel_instance)
+
         return choice(rels)
 
 

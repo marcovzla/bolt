@@ -59,7 +59,7 @@ if __name__ == '__main__':
 
 
     dozen = 12
-    couple = 2000
+    couple = 2
     for i in range(couple * dozen):
         location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
         speaker.describe(location, scene, False, 1)

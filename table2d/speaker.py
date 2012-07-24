@@ -53,9 +53,9 @@ class Speaker(object):
         # print 'probability', sampled_relation.probability(poi,sampled_landmark)
 
 
-        description = str(poi) + '; ' + sampled_relation.get_description(head_on, sampled_landmark, poi) + " " + sampled_landmark.get_description(head_on)
+        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
         print description
-        if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, sampled_relation, description)
+        if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, type(sampled_relation), description)
 
     def talk_to_baby(self, scene, perspectives, how_many_each=10000):
 
@@ -176,8 +176,9 @@ class Speaker(object):
                             relset = relset_f()
 
                             for relation in relset.relations: # we have a relation
-                                entropy = self.get_entropy(self.get_probabilities(head_on, s, relation, lmk, 0.1))
-                                applies = relation.evaluate(head_on, lmk, poi)
+                                entropy = self.get_entropy(self.get_probabilities(s, relation, head_on, lmk, 0.1))
+                                relation = relation(head_on, lmk, poi)
+                                applies = relation.is_applicable()
 
                                 if applies:
                                     def create_desc(adverb, prob):
@@ -200,7 +201,7 @@ class Speaker(object):
 
         return reversed(sorted(all_desc))
 
-    def get_probabilities(self, perspective, scene, relation, landmark, step=0.02):
+    def get_probabilities(self, scene, relation, perspective, landmark, step=0.02):
         scene_bb = scene.get_bounding_box()
         scene_bb = scene_bb.inflate( Vec2(scene_bb.width*0.5,scene_bb.height*0.5) )
 
@@ -210,7 +211,8 @@ class Speaker(object):
         probabilities = zeros(  ( len(ys),len(xs) )  )
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
-                probabilities[j,i] = relation.evaluate( perspective, landmark, Vec2(x,y) )
+                rel = relation( perspective, landmark, Vec2(x,y) )
+                probabilities[j,i] = rel.is_applicable()
 
         return probabilities
 
@@ -236,7 +238,8 @@ class Speaker(object):
         probabilities = zeros(  ( len(ys),len(xs) )  )
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
-                probabilities[j,i] = sampled_relation.evaluate( head_on, sampled_landmark, Vec2(x,y) )
+                rel = sampled_relation( head_on, sampled_landmark, Vec2(x,y) )
+                probabilities[j,i] = rel.is_applicable()
 
         x = array( [list(xs-step*0.5)]*len(ys) )
         y = array( [list(ys-step*0.5)]*len(xs) ).T
