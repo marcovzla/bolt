@@ -12,10 +12,14 @@ class Landmark(object):
     def __init__(self, name, representation, parent, descriptions):
         self.name = name
         self.representation = representation
-        self.representation.parent_landmark = self
         self.parent = parent
         self.descriptions = descriptions
         self.uuid = uuid4()
+
+        self.representation.parent_landmark = self
+
+        for alt_repr in representation.get_alt_representations():
+            alt_repr.parent_landmark = self
 
     def __repr__(self):
         return self.name
@@ -31,15 +35,12 @@ class Landmark(object):
     def get_top_parent(self):
         top = self.parent
         if top is None: return self.representation
-        if top.parent_landmark is None:
-            if top.alt_of is None: return top
-            else: return top.alt_of
+        if top.parent_landmark is None: self.representation
         return top.parent_landmark.get_top_parent()
 
     def get_ancestor_count(self):
         top = self.parent
         if top is None: return 0
-        if top.alt_of: top = top.alt_of
         if top.parent_landmark is None: return 0
         return 1 + top.parent_landmark.get_ancestor_count()
 
