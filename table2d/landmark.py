@@ -23,9 +23,9 @@ class Landmark(object):
         return self.get_top_parent().get_primary_axes()
 
     def distance_to(self, point):
-        tpd = self.get_top_parent().distance_to(point)
-        if self.parent: point = self.parent.project_point(point)
-        return self.representation.distance_to(point) + tpd
+        #tpd = self.get_top_parent().distance_to(point)
+        #if self.parent: point = self.parent.project_point(point)
+        return self.representation.distance_to(point)# + tpd
 
     def get_top_parent(self):
         top = self.parent

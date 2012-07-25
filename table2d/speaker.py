@@ -1,5 +1,5 @@
 from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRelationSet, VeryCloseDistanceRelation
-from numpy import array, random, arange, zeros, indices, log, argmin
+from numpy import array, random, arange, zeros, indices, log, argmin, set_printoptions
 from random import choice
 from matplotlib import pyplot as plt
 from landmark import PointRepresentation, LineRepresentation, RectangleRepresentation
@@ -120,7 +120,7 @@ class Speaker(object):
         description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
         print description
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
-        '''
+
         # [0.18873916581775263, 1.0, 5.2983173665480985, Scene(3), table, <landmark.RectangleRepresentation>,
         #    table, <relations.on object at 0x37f1710>, ['on the table']]
 
@@ -146,16 +146,27 @@ class Speaker(object):
         description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
         print description
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
+        '''
 
         sampled_landmark = scene.landmarks['table'].representation.landmarks['ll_corner']
-        relset = DistanceRelationSet()
-        sampled_relation = relset.relations[0]
-        print 'distance',sampled_landmark.distance_to(poi)
-        print 'probability', sampled_relation.probability(poi,sampled_landmark)
         head_on = self.get_head_on_viewpoint(sampled_landmark)
+        relset = DistanceRelationSet()
+        sampled_relation = relset.relations[0](head_on,sampled_landmark,poi)
+        print 'distance',sampled_landmark.distance_to(poi)
+        print 'probability', sampled_relation.is_applicable()
         description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
         print description
-        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
+        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.1)
+
+        sampled_landmark = scene.landmarks['table'].representation.landmarks['ll_corner']
+        head_on = self.get_head_on_viewpoint(sampled_landmark)
+        relset = OrientationRelationSet()
+        sampled_relation = relset.relations[0](head_on,sampled_landmark,poi)
+        print 'distance',sampled_landmark.distance_to(poi)
+        print 'probability', sampled_relation.is_applicable()
+        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
+        print description
+        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.1)
 
 
     def get_all_descriptions(self, poi, scene, max_level=-1):
@@ -222,7 +233,9 @@ class Speaker(object):
         probabilities = probabilities/sum(probabilities.flatten())
         return sum( (probabilities * log( 1./probabilities)).flatten() )
 
-    def visualize(self, scene, poi, head_on, sampled_landmark, sampled_relation, description):
+    def visualize(self, scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.02):
+
+        relation = type(sampled_relation)
 
         plt.figure( figsize=(6,8) )
         #plt.subplot(1,2,1)
@@ -231,15 +244,20 @@ class Speaker(object):
         plt.axis([scene_bb.min_point.x, scene_bb.max_point.x, scene_bb.min_point.y, scene_bb.max_point.y])
 
 
-        step = 0.02
         xs = arange(scene_bb.min_point.x, scene_bb.max_point.x, step)
         ys = arange(scene_bb.min_point.y, scene_bb.max_point.y, step)
 
         probabilities = zeros(  ( len(ys),len(xs) )  )
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
-                rel = sampled_relation( head_on, sampled_landmark, Vec2(x,y) )
+                rel = relation( head_on, sampled_landmark, Vec2(x,y) )
+                rel.measurement.degree = sampled_relation.measurement.degree
+                rel.measurement.word = sampled_relation.measurement.word
                 probabilities[j,i] = rel.is_applicable()
+                # print rel.distance, probabilities[j,i]
+
+        set_printoptions(threshold='nan')
+        #print probabilities
 
         x = array( [list(xs-step*0.5)]*len(ys) )
         y = array( [list(ys-step*0.5)]*len(xs) ).T

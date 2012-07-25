@@ -1,8 +1,6 @@
 from random import choice
-from numpy import *
-from numpy.random import multinomial, sample
-from scipy.stats import *
-from itertools import *
+from numpy import array, random
+from scipy.stats import norm
 from planar import Vec2, Affine
 from planar.line import LineSegment, Ray
 from landmark import Landmark, PointRepresentation
@@ -31,24 +29,29 @@ class Measurement(object):
         self.distance = distance
         self.direction = direction
 
-        self.best = self.evaluate_all(self.distance)[0]
+        self.best = self.evaluate_all()[0]
         self.degree = self.best[1]
         self.word = self.best[2]
 
-    def is_applicable(self, adverb, word, distance):
+    def is_applicable(self, adverb=None, word=None):
+        if adverb is None:
+            adverb = self.degree
+        if word is None :
+            word = self.word
+
         mu,std,sign = self.words[word]
         mult = self.degrees[adverb]
 
-        p = norm.cdf(distance, mu * (mult ** sign), std)
+        p = norm.cdf(self.distance, mu * (mult ** sign), std)
         if sign < 0: p = 1 - p
         return p
 
-    def evaluate_all(self, distance):
+    def evaluate_all(self):
         probs = []
 
         for word in self.words:
             for adverb in self.degrees:
-                p = self.is_applicable(adverb, word, distance)
+                p = self.is_applicable(adverb, word)
                 probs.append([p, adverb, word])
 
         return sorted(probs, reverse=True)
@@ -65,7 +68,7 @@ class DistanceRelation(Relation):
 
     def is_applicable(self):
         if not self.landmark.representation.contains( PointRepresentation(self.poi) ):
-            return 1.0
+            return self.measurement.is_applicable()
         else:
             return 0.0
 
@@ -86,11 +89,11 @@ class ToRelation(DistanceRelation):
 class VeryCloseDistanceRelation(DistanceRelation):
     def __init__(self, perspective, landmark, poi, words):
         super(VeryCloseDistanceRelation, self).__init__(perspective, landmark, poi, words)
-        self.word = 'close'
-        self.adverb = 'very '
+        self.measurement.word = 'close'
+        self.measurement.degree = 'very '
 
     def is_applicable(self):
-        return super(VeryCloseDistanceRelation,self).is_applicable() and self.measurement.is_applicable(self.adverb, self.word, self.distance)
+        return super(VeryCloseDistanceRelation,self).is_applicable() and self.measurement.is_applicable()
 
     def get_description(self):
         return choice(self.words)
@@ -138,7 +141,18 @@ class OrientationRelation(Relation):
         self.standard = Vec2(0,1)
         self.orientation = orientation
 
-        p_segment = LineSegment.from_points( [self.perspective, self.landmark.representation.middle] )
+        top_primary_axes = landmark.get_top_parent().get_primary_axes()
+
+        our_axis = None
+        for axis in top_primary_axes:
+            if axis.contains_point(perspective):
+                our_axis = axis
+        assert( our_axis != None )
+
+        new_axis = our_axis.parallel(self.landmark.representation.middle)
+        new_perspective = new_axis.project(perspective)
+
+        p_segment = LineSegment.from_points( [new_perspective, self.landmark.representation.middle] )
 
         angle = self.standard.angle_to(p_segment.vector)
         rotation = Affine.rotation(angle)
@@ -152,8 +166,9 @@ class OrientationRelation(Relation):
         self.measurement = Measurement(self.distance, self.orientation)
 
     def is_applicable(self):
-        if self.ori_ray.contains_point(self.projected):
-            return 1.0
+        if self.ori_ray.contains_point(self.projected) and not \
+            self.landmark.representation.contains(PointRepresentation(self.projected)):
+            return self.measurement.is_applicable()
         else:
             return 0.0
 

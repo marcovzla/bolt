@@ -58,13 +58,13 @@ if __name__ == '__main__':
     #speaker.talk_to_baby(scene, perspectives, how_many_each=10)
 
 
-    dozen = 12
-    couple = 2
-    for i in range(couple * dozen):
-        location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-        speaker.describe(location, scene, False, 1)
-    #speaker.demo(location, scene)
-    # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
+    # dozen = 12
+    # couple = 2
+    # for i in range(couple * dozen):
+    #     location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
+    #     speaker.describe(location, scene, False, 1)
+    location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
+    speaker.demo(location, scene)
     # all_desc = speaker.get_all_descriptions(location, scene, 1)
 
     # for desc in all_desc:
