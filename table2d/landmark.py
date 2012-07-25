@@ -12,6 +12,7 @@ class Landmark(object):
     def __init__(self, name, representation, parent, descriptions):
         self.name = name
         self.representation = representation
+        self.representation.parent_landmark = self
         self.parent = parent
         self.descriptions = descriptions
         self.uuid = uuid4()
@@ -34,6 +35,13 @@ class Landmark(object):
             if top.alt_of is None: return top
             else: return top.alt_of
         return top.parent_landmark.get_top_parent()
+
+    def get_ancestor_count(self):
+        top = self.parent
+        if top is None: return 0
+        if top.alt_of: top = top.alt_of
+        if top.parent_landmark is None: return 0
+        return 1 + top.parent_landmark.get_ancestor_count()
 
     def get_description(self, perspective):
         top = self.get_top_parent()
@@ -207,9 +215,6 @@ class LineRepresentation(AbstractRepresentation):
                 'middle': Landmark('middle', PointRepresentation(self.line.mid),   self, words[1]),
             }
 
-        for lmk in self.landmarks.values():
-            lmk.representation.parent_landmark = lmk
-
     def my_project_point(self, point):
         return self.line.line.project(point)
 
@@ -337,9 +342,6 @@ class RectangleRepresentation(AbstractRepresentation):
         for lmk_name in landmarks_to_get:
             if lmk_name in landmark_constructors:
                 self.landmarks[lmk_name] = eval(landmark_constructors[lmk_name])
-
-        for lmk in self.landmarks.values():
-            lmk.representation.parent_landmark = lmk
 
     def my_project_point(self, point):
         return point
