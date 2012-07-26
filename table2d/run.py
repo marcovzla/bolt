@@ -22,24 +22,24 @@ if __name__ == '__main__':
     scene = Scene(3)
 
     table = Landmark('table',
-                 RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(6,7)]), descriptions=['table', 'table surface']),
+                 RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(6,7)])),
                  None,
-                 ['table', 'table surface'], Landmark.TABLE)
+                 Landmark.TABLE)
 
     obj1 = Landmark('obj1',
-                 RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(5.1,5.1)]), descriptions=['cup']),
+                 RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(5.1,5.1)])),
                  None,
-                 ['cup'], Landmark.CUP)
+                 Landmark.CUP)
 
     obj2 = Landmark('obj2',
-                 RectangleRepresentation(rect=BoundingBox([Vec2(5.5,6), Vec2(5.6,6.1)]), descriptions=['bottle']),
+                 RectangleRepresentation(rect=BoundingBox([Vec2(5.5,6), Vec2(5.6,6.1)])),
                  None,
-                 ['bottle'], Landmark.BOTTLE)
+                 Landmark.BOTTLE)
 
     obj3 = Landmark('obj3',
-                 RectangleRepresentation(rect=BoundingBox([Vec2(4.5,4.5), Vec2(4.8,4.8)]), descriptions=['chair']),
+                 RectangleRepresentation(rect=BoundingBox([Vec2(4.5,4.5), Vec2(4.8,4.8)])),
                  None,
-                 ['chair'], Landmark.CHAIR)
+                 Landmark.CHAIR)
 
     scene.add_landmark(table)
     scene.add_landmark(obj1)
@@ -58,11 +58,11 @@ if __name__ == '__main__':
     #speaker.talk_to_baby(scene, perspectives, how_many_each=10)
 
 
-    dozen = 12
+    dozen = 1
     couple = 2
     for i in range(couple * dozen):
         location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-        speaker.describe(location, scene, False, 1)
+        speaker.describe(location, scene, True, 1)
     # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
     # speaker.demo(location, scene)
     # all_desc = speaker.get_all_descriptions(location, scene, 1)
