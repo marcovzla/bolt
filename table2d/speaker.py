@@ -1,11 +1,13 @@
 from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRelationSet, VeryCloseDistanceRelation
-from numpy import array, random, arange, zeros, indices, log, argmin
+from numpy import array, arange, zeros, log, argmin, set_printoptions
 from random import choice
 from matplotlib import pyplot as plt
 from landmark import PointRepresentation, LineRepresentation, RectangleRepresentation
-from planar import Vec2, BoundingBox
+from planar import Vec2
 import sys
 from textwrap import wrap
+import language_generator
+
 
 class Speaker(object):
     def __init__(self, location):
@@ -34,9 +36,6 @@ class Speaker(object):
                         all_landmarks.append([s, lmk])
 
         sceness, landmarks = zip( *all_landmarks )
-        # for ld in all_landmarks:
-        #     print ld
-
 
         relset = choice([DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet])()
         index = relset.sample_landmark(landmarks, poi)
@@ -52,10 +51,10 @@ class Speaker(object):
         # print 'distance',sampled_landmark.distance_to(poi)
         # print 'probability', sampled_relation.probability(poi,sampled_landmark)
 
-
-        description = str(poi) + '; ' + sampled_relation.get_description(head_on, sampled_landmark, poi) + " " + sampled_landmark.get_description(head_on)
+        description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation)
         print description
-        if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, sampled_relation, description)
+
+        if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, sampled_relation, description, 0.1)
 
     def talk_to_baby(self, scene, perspectives, how_many_each=10000):
 
@@ -120,7 +119,7 @@ class Speaker(object):
         description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
         print description
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
-        '''
+
         # [0.18873916581775263, 1.0, 5.2983173665480985, Scene(3), table, <landmark.RectangleRepresentation>,
         #    table, <relations.on object at 0x37f1710>, ['on the table']]
 
@@ -146,18 +145,29 @@ class Speaker(object):
         description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
         print description
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
+        '''
 
         sampled_landmark = scene.landmarks['table'].representation.landmarks['ll_corner']
-        relset = DistanceRelationSet()
-        sampled_relation = relset.relations[0]
-        print 'distance',sampled_landmark.distance_to(poi)
-        print 'probability', sampled_relation.probability(poi,sampled_landmark)
         head_on = self.get_head_on_viewpoint(sampled_landmark)
-        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
+        relset = DistanceRelationSet()
+        sampled_relation = relset.relations[0](head_on,sampled_landmark,poi)
+        print 'distance',sampled_landmark.distance_to(poi)
+        print 'probability', sampled_relation.is_applicable()
+        description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation)
         print description
-        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
+        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.1)
 
+        sampled_landmark = scene.landmarks['table'].representation.landmarks['ll_corner']
+        head_on = self.get_head_on_viewpoint(sampled_landmark)
+        relset = OrientationRelationSet()
+        sampled_relation = relset.relations[0](head_on,sampled_landmark,poi)
+        print 'distance',sampled_landmark.distance_to(poi)
+        print 'probability', sampled_relation.is_applicable()
+        description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation)
+        print description
+        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.1)
 
+    # broken!
     def get_all_descriptions(self, poi, scene, max_level=-1):
         all_desc = []
         scenes = scene.get_child_scenes(poi) + [scene]
@@ -170,18 +180,19 @@ class Speaker(object):
                 for representation in representations:
                     for lmk in representation.get_landmarks(max_level)+[scene_lmk]: # we have a leaf landmark at current level
                         head_on = self.get_head_on_viewpoint(lmk)
-                        lmk_desc = lmk.get_description(head_on)
+                        lmk_desc = language_generator.get_landmark_description(head_on, lmk)
 
                         for relset_f in [DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet]:
                             relset = relset_f()
 
                             for relation in relset.relations: # we have a relation
-                                entropy = self.get_entropy(self.get_probabilities(head_on, s, relation, lmk, 0.1))
-                                applies = relation.evaluate(head_on, lmk, poi)
+                                entropy = self.get_entropy(self.get_probabilities(s, relation, head_on, lmk, 0.1))
+                                relation = relation(head_on, lmk, poi)
+                                applies = relation.is_applicable()
 
                                 if applies:
                                     def create_desc(adverb, prob):
-                                        desc = [adverb + rd + ' ' + lmk_desc for rd in relation.words]
+                                        desc = [adverb + rd + ' ' + lmk_desc for rd in language_generator(type(relation))]
                                         score = prob*applies / entropy
                                         all_desc.append( [score, prob, entropy, s, scene_lmk, representation, lmk, relation, desc] )
                                         sys.stderr.write('[%d] %f, %f, %f\n' % (counter, score, prob, entropy))
@@ -200,7 +211,7 @@ class Speaker(object):
 
         return reversed(sorted(all_desc))
 
-    def get_probabilities(self, perspective, scene, relation, landmark, step=0.02):
+    def get_probabilities(self, scene, relation, perspective, landmark, step=0.02):
         scene_bb = scene.get_bounding_box()
         scene_bb = scene_bb.inflate( Vec2(scene_bb.width*0.5,scene_bb.height*0.5) )
 
@@ -210,7 +221,8 @@ class Speaker(object):
         probabilities = zeros(  ( len(ys),len(xs) )  )
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
-                probabilities[j,i] = relation.evaluate( perspective, landmark, Vec2(x,y) )
+                rel = relation( perspective, landmark, Vec2(x,y) )
+                probabilities[j,i] = rel.is_applicable()
 
         return probabilities
 
@@ -220,7 +232,9 @@ class Speaker(object):
         probabilities = probabilities/sum(probabilities.flatten())
         return sum( (probabilities * log( 1./probabilities)).flatten() )
 
-    def visualize(self, scene, poi, head_on, sampled_landmark, sampled_relation, description):
+    def visualize(self, scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.02):
+
+        relation = type(sampled_relation)
 
         plt.figure( figsize=(6,8) )
         #plt.subplot(1,2,1)
@@ -229,14 +243,20 @@ class Speaker(object):
         plt.axis([scene_bb.min_point.x, scene_bb.max_point.x, scene_bb.min_point.y, scene_bb.max_point.y])
 
 
-        step = 0.02
         xs = arange(scene_bb.min_point.x, scene_bb.max_point.x, step)
         ys = arange(scene_bb.min_point.y, scene_bb.max_point.y, step)
 
         probabilities = zeros(  ( len(ys),len(xs) )  )
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
-                probabilities[j,i] = sampled_relation.evaluate( head_on, sampled_landmark, Vec2(x,y) )
+                rel = relation( head_on, sampled_landmark, Vec2(x,y) )
+                rel.measurement.best_degree_class = sampled_relation.measurement.best_degree_class
+                rel.measurement.best_distance_class = sampled_relation.measurement.best_distance_class
+                probabilities[j,i] = rel.is_applicable()
+                # print rel.distance, probabilities[j,i]
+
+        set_printoptions(threshold='nan')
+        #print probabilities
 
         x = array( [list(xs-step*0.5)]*len(ys) )
         y = array( [list(ys-step*0.5)]*len(xs) ).T
@@ -251,7 +271,7 @@ class Speaker(object):
                 xs = [rect.min_point.x,rect.min_point.x,rect.max_point.x,rect.max_point.x]
                 ys = [rect.min_point.y,rect.max_point.y,rect.max_point.y,rect.min_point.y]
                 plt.fill(xs,ys,facecolor='none',linewidth=2)
-                plt.text(rect.min_point.x+0.01,rect.max_point.y+0.02,lmk.descriptions[0])
+                plt.text(rect.min_point.x+0.01,rect.max_point.y+0.02,lmk.name)
 
         plt.plot(self.location.x,
                  self.location.y,
