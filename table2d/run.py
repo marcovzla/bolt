@@ -24,22 +24,22 @@ if __name__ == '__main__':
     table = Landmark('table',
                  RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(6,7)]), descriptions=['table', 'table surface']),
                  None,
-                 ['table', 'table surface'])
+                 ['table', 'table surface'], Landmark.TABLE)
 
     obj1 = Landmark('obj1',
                  RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(5.1,5.1)]), descriptions=['cup']),
                  None,
-                 ['cup'])
+                 ['cup'], Landmark.CUP)
 
     obj2 = Landmark('obj2',
                  RectangleRepresentation(rect=BoundingBox([Vec2(5.5,6), Vec2(5.6,6.1)]), descriptions=['bottle']),
                  None,
-                 ['bottle'])
+                 ['bottle'], Landmark.BOTTLE)
 
     obj3 = Landmark('obj3',
                  RectangleRepresentation(rect=BoundingBox([Vec2(4.5,4.5), Vec2(4.8,4.8)]), descriptions=['chair']),
                  None,
-                 ['chair'])
+                 ['chair'], Landmark.CHAIR)
 
     scene.add_landmark(table)
     scene.add_landmark(obj1)
@@ -58,13 +58,13 @@ if __name__ == '__main__':
     #speaker.talk_to_baby(scene, perspectives, how_many_each=10)
 
 
-    # dozen = 12
-    # couple = 2
-    # for i in range(couple * dozen):
-    #     location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-    #     speaker.describe(location, scene, False, 1)
-    location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-    speaker.demo(location, scene)
+    dozen = 12
+    couple = 2
+    for i in range(couple * dozen):
+        location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
+        speaker.describe(location, scene, False, 1)
+    # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
+    # speaker.demo(location, scene)
     # all_desc = speaker.get_all_descriptions(location, scene, 1)
 
     # for desc in all_desc:

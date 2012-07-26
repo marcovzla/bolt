@@ -6,6 +6,7 @@ from landmark import PointRepresentation, LineRepresentation, RectangleRepresent
 from planar import Vec2, BoundingBox
 import sys
 from textwrap import wrap
+import language_generator
 
 class Speaker(object):
     def __init__(self, location):
@@ -54,7 +55,10 @@ class Speaker(object):
 
 
         description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
-        print description
+        print 'OLD: ' + description
+
+        print 'NEW: ' + str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation)
+
         if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, type(sampled_relation), description)
 
     def talk_to_baby(self, scene, perspectives, how_many_each=10000):

@@ -19,12 +19,44 @@ class RelationSet(object):
         pass
 
 
+class Degree(object):
+    NONE = 2001
+    NOT_VERY = 2002
+    SOMEWHAT = 2003
+    VERY = 2004
+
+
 class Measurement(object):
+    FAR = 1001
+    CLOSE = 1002
+    NEAR = 1003
+
     def __init__(self, distance, direction=None):
-        self.words = {'far': (0.9, 0.05, 1),
-                      'close': (0.25, 0.05, -1),
-                      'near': (0.4, 0.05, -1)}
-        self.degrees = {'': 1, 'not very ': 0.6, 'somewhat ': 0.75, 'very ': 1.5}
+        self.words = {
+            'far': (0.9, 0.05, 1),
+            'close': (0.25, 0.05, -1),
+            'near': (0.4, 0.05, -1)
+        }
+
+        self.word_class = {
+            Measurement.FAR: (0.9, 0.05, 1),
+            Measurement.CLOSE: (0.25, 0.05, -1),
+            Measurement.NEAR: (0.4, 0.05, -1)
+        }
+
+        self.degrees = {
+            '': 1,
+            'not very ': 0.6,
+            'somewhat ': 0.75,
+            'very ': 1.5
+        }
+
+        self.degree_class = {
+            Degree.NONE: 1,
+            Degree.NOT_VERY: 0.6,
+            Degree.SOMEWHAT: 0.75,
+            Degree.VERY: 1.5
+        }
 
         self.distance = distance
         self.direction = direction
@@ -33,10 +65,14 @@ class Measurement(object):
         self.degree = self.best[1]
         self.word = self.best[2]
 
+        self.best_class = self.evaluate_all_class()[0]
+        self.degree_class = self.best_class[1]
+        self.word_class = self.best_class[2]
+
     def is_applicable(self, adverb=None, word=None):
         if adverb is None:
             adverb = self.degree
-        if word is None :
+        if word is None:
             word = self.word
 
         mu,std,sign = self.words[word]
@@ -53,6 +89,29 @@ class Measurement(object):
             for adverb in self.degrees:
                 p = self.is_applicable(adverb, word)
                 probs.append([p, adverb, word])
+
+        return sorted(probs, reverse=True)
+
+    def is_applicable_class(self, adverb=None, word=None):
+        if adverb is None:
+            adverb = self.degree_class
+        if word is None:
+            word = self.word_class
+
+        mu,std,sign = self.word_class[word]
+        mult = self.degree_class[adverb]
+
+        p = norm.cdf(self.distance, mu * (mult ** sign), std)
+        if sign < 0: p = 1 - p
+        return p
+
+    def evaluate_all_class(self):
+        probs = []
+
+        for word in self.word_class:
+            for degree in self.degree_class:
+                p = self.is_applicable_class(degree, word)
+                probs.append([p, degree, word])
 
         return sorted(probs, reverse=True)
 
