@@ -250,8 +250,9 @@ class Speaker(object):
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
                 rel = relation( head_on, sampled_landmark, Vec2(x,y) )
-                rel.measurement.best_degree_class = sampled_relation.measurement.best_degree_class
-                rel.measurement.best_distance_class = sampled_relation.measurement.best_distance_class
+                if hasattr(rel, 'measurement'):
+                    rel.measurement.best_degree_class = sampled_relation.measurement.best_degree_class
+                    rel.measurement.best_distance_class = sampled_relation.measurement.best_distance_class
                 probabilities[j,i] = rel.is_applicable()
                 # print rel.distance, probabilities[j,i]
 

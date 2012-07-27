@@ -41,13 +41,13 @@ class Measurement(object):
             Degree.NONE: 1,
             Degree.NOT_VERY: 0.6,
             Degree.SOMEWHAT: 0.75,
-            Degree.VERY: 1.5
+            Degree.VERY: 2
         }
 
         self.distance = distance
         self.direction = direction
 
-        self.best = self.evaluate_all()[0]
+        self.best = self.evaluate_all()
         self.best_degree_class = self.best[1]
         self.best_distance_class = self.best[2]
 
@@ -72,7 +72,11 @@ class Measurement(object):
                 p = self.is_applicable(degree, dist)
                 probs.append([p, degree, dist])
 
-        return sorted(probs, reverse=True)
+        ps, degrees, dists = zip(*probs)
+        ps = array(ps)
+        ps /= sum(ps)
+        index = ps.cumsum().searchsorted( random.sample(1) )[0]
+        return probs[index]
 
 
 class DistanceRelation(Relation):
@@ -101,6 +105,8 @@ class ToRelation(DistanceRelation):
 class VeryCloseDistanceRelation(DistanceRelation):
     def __init__(self, perspective, landmark, poi):
         super(VeryCloseDistanceRelation, self).__init__(perspective, landmark, poi)
+        self.measurement.best_degree_class = Degree.VERY
+        self.measurement.best_distance_class = Measurement.CLOSE
 
     def is_applicable(self):
         return super(VeryCloseDistanceRelation,self).is_applicable() and self.measurement.is_applicable()
@@ -205,6 +211,7 @@ class DistanceRelationSet(RelationSet):
     def sample_landmark(self, landmarks, poi):
         distances = array([lmk.distance_to(poi) for lmk in landmarks])
         scores = 1.0/(array(distances)**1.5 + self.epsilon)
+        scores[distances == 0] = 0
         lm_probabilities = scores/sum(scores)
         index = lm_probabilities.cumsum().searchsorted( random.sample(1) )[0]
         return index
