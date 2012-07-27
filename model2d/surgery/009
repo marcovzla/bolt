@@ -1,0 +1,6 @@
+LANDMARK-PHRASE < (NP=lmk $+ (PP=pp < ((IN=of < of) $+ NP=obj)))
+
+relabel lmk LANDMARK
+relabel of OF
+relabel obj LANDMARK-PHRASE
+excise pp pp

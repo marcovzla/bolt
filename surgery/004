@@ -1,5 +1,0 @@
-CHILD-LANDMARK=lmk < (NP=rel $++ (PP=pp < IN=in))
-
-excise pp pp
-move in >-1 rel
-relabel rel RELATION

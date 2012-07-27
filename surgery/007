@@ -1,5 +1,0 @@
-S1=loc < (/P$/=rel <<- /LANDMARK$/=lmk)
-
-move lmk >-1 loc
-relabel rel RELATION
-relabel loc LOCATION

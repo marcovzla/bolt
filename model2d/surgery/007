@@ -1,0 +1,6 @@
+% if a PP has a NP followed by a PP
+% move the second PP to be a child of NP
+PP [ <-2 NP=np & <-1 PP=pp ]
+
+adjoinF (NP @) np
+move pp $- np
