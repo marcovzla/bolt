@@ -7,6 +7,77 @@ from planar.line import LineSegment
 from planar.line import Line
 from random import choice
 from uuid import uuid4
+from math import sqrt
+
+def ccw(A,B,C):
+    ccw = (C.y-A.y)*(B.x-A.x) > (B.y-A.y)*(C.x-A.x)
+    return 1 if ccw > 0.0 else -1 if ccw < 0.0 else 0
+
+def intersect(seg1,seg2):
+    A,B = seg1.points
+    C,D = seg2.points
+    return ccw(A,C,D) != ccw(B,C,D) and ccw(A,B,C) != ccw(A,B,D)
+
+def pairwise(l):
+    pairs = []
+    for i in range(1, len(l)):
+        pairs.append( (l[i-1], l[i]) )
+    return pairs
+
+def seg_to_seg_distance(seg1, seg2):
+    if intersect(seg1,seg2):
+        return 0
+    else:
+        dists = []
+        dists.append( seg1.distance_to(seg2.start) )
+        dists.append( seg1.distance_to(seg2.end) )
+        dists.append( seg2.distance_to(seg1.start) )
+        dists.append( seg2.distance_to(seg1.end) )
+        return min(dists)
+
+def bb_to_bb_manhattan_distance(bb1, bb2):
+    N = 2 # cardinality of points
+
+    result = 0
+    for i in range(N):
+        delta = 0
+        # print bb1.min_point[i], bb2.max_point[i], bb1.min_point[i] > bb2.max_point[i]
+        # print bb2.min_point[i], bb1.max_point[i], bb2.min_point[i] > bb1.max_point[i]
+        if bb1.min_point[i] > bb2.max_point[i]:
+            delta = bb2.max_point[i] - bb1.min_point[i]
+        elif bb2.min_point[i] > bb1.max_point[i]:
+            delta = bb1.max_point[i] - bb2.min_point[i]
+
+        result += delta * delta
+
+    return result
+
+def bb_to_edges(bb):
+    poly = bb.to_polygon()
+    edges = []
+    for i in range(1, len(poly)):
+        edges.append( LineSegment.from_points( [poly[i-1],poly[i]]) )
+    return edges
+
+def bb_to_vec_distance(bb, vec):
+    if bb.contains_point( vec ):
+        return 0
+
+    dists = []
+    for edge in bb_to_edges(bb):
+        dists.append( edge.distance_to(vec) )
+    return min(dists)
+
+def bb_to_seg_distance(bb, seg):
+    dists = []
+    for edge in bb_to_edges(bb):
+        dists.append(  seg_to_seg_distance( edge, seg )  )
+    return min(dists)
+
+def bb_to_bb_distance(bb1, bb2):
+    return sqrt(bb_to_bb_manhattan_distance(bb1,bb2))
+
+
 
 class Landmark(object):
     TABLE = 1
@@ -129,8 +200,14 @@ class PointRepresentation(AbstractRepresentation):
     def my_project_point(self, point):
         return Vec2(self.location.x, self.location.y)
 
-    def distance_to(self, point):
-        return self.location.distance_to(point)
+    def distance_to(self, thing):
+        if isinstance(thing, BoundingBox):
+            return self.distance_to_bb(thing)
+        else:
+            return thing.distance_to(self.location)
+
+    def distance_to_bb(self, bb):
+        return bb_to_vec_distance(bb, self.location)
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
@@ -167,8 +244,23 @@ class LineRepresentation(AbstractRepresentation):
     def my_project_point(self, point):
         return self.line.line.project(point)
 
-    def distance_to(self, point):
+    def distance_to(self, thing):
+        if isinstance(thing,Vec2):
+            return self.distance_to_point(thing)
+        elif isinstance(thing,LineSegment):
+            return self.distance_to_segment(thing)
+        elif isinstance(thing,BoundingBox):
+            return self.distance_to_rectangle(thing)
+
+    def distance_to_point(self, point):
         return self.line.distance_to(point)
+
+    def distance_to_segment(self, seg):
+        return seg_to_seg_distance(self.line, seg)
+
+    def distance_to_rectangle(self, bb):
+        return bb_to_seg_distance(bb, self.line)
+
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
@@ -256,12 +348,22 @@ class RectangleRepresentation(AbstractRepresentation):
     def my_project_point(self, point):
         return point
 
-    def distance_to(self, point):
-        if self.contains(PointRepresentation(point)):
-            return float('infinity')
-        if len(self.landmarks) == 0:
-            return self.rect.center.distance_to(point)
-        return min([lmk.representation.distance_to(point) for lmk in self.landmarks.values()])
+    def distance_to(self, thing):
+        if isinstance(thing,Vec2):
+            return self.distance_to_point(thing)
+        elif isinstance(thing,LineSegment):
+            return self.distance_to_segment(thing)
+        elif isinstance(thing,BoundingBox):
+            return self.distance_to_rectangle(thing)
+
+    def distance_to_point(self, point):
+        return bb_to_vec_distance(self.rect,point)
+
+    def distance_to_segment(self, seg):
+        return bb_to_seg_distance(self.rect, seg)
+
+    def distance_to_rectangle(self, bb):
+        return bb_to_bb_distance(self.rect, bb)
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
@@ -291,8 +393,8 @@ class SurfaceRepresentation(RectangleRepresentation):
         super(SurfaceRepresentation, self).__init__(rect, landmarks_to_get)
         self.alt_representations = []
 
-    def distance_to(self, point):
-        return float('infinity')
+    # def distance_to(self, point):
+    #     return float('infinity')
 
 
 class Scene(object):
