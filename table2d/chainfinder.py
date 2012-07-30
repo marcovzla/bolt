@@ -66,6 +66,7 @@ def findChains(inputObjectSet,
     bestlines = []
     explored = set()
     skipped = 0
+    print inputObjectSet
     pairwise = util.find_pairs(inputObjectSet)
     pairwise.sort(key=lambda p: util.findDistance(p[0].position, p[1].position),reverse=False)
 #    for pair in pairwise:

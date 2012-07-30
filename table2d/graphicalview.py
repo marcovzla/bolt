@@ -116,7 +116,8 @@ class PlaygroundWindow:
         self.c.delete("line")
         searchMe = []
         for o in self.c.find_all():
-            searchMe.append(PhysicalObject(o,np.array(self.c.coords(o)),0,0))
+            print self.c.coords(o)
+            searchMe.append(PhysicalObject(o,np.array(self.c.coords(o)[0:2]),np.array(self.c.coords(o)[0:2]),np.array(self.c.coords(o)[2:4])))
         results = chainfinder.findChains(searchMe,params.distance_limit,params.angle_limit,params.min_line_length,
                                          params.anglevar_weight,params.distvar_weight,params.dist_weight,params.allow_intersection)
         if len(results)>0:

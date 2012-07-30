@@ -4,6 +4,7 @@ from planar import Vec2, BoundingBox
 from landmark import RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
 from random import random
 import pickle
+import adapter
 
 if __name__ == '__main__':
     # poi = Vec2(float(sys.argv[1]), 0)
@@ -45,7 +46,8 @@ if __name__ == '__main__':
     scene.add_landmark(obj1)
     scene.add_landmark(obj2)
     scene.add_landmark(obj3)
-
+    
+    adapter.adapt(scene)
     # f = open('scene.pickle','wb')
     # pickle.dump(scene,f)
     # f.flush()
