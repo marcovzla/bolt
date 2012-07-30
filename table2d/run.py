@@ -47,7 +47,8 @@ if __name__ == '__main__':
     scene.add_landmark(obj2)
     scene.add_landmark(obj3)
     
-    print adapter.adapt(scene)
+    groups = adapter.adapt(scene)
+    print "groups:",groups
     # f = open('scene.pickle','wb')
     # pickle.dump(scene,f)
     # f.flush()
