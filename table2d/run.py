@@ -47,7 +47,7 @@ if __name__ == '__main__':
     scene.add_landmark(obj2)
     scene.add_landmark(obj3)
     
-    adapter.adapt(scene)
+    print adapter.adapt(scene)
     # f = open('scene.pickle','wb')
     # pickle.dump(scene,f)
     # f.flush()
