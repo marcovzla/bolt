@@ -152,15 +152,15 @@ class Production(Base):
 
     # has many
     words = relationship('Word', backref='parent')
-    productions = relationship('Production', backref=backref('parent', remote_side=[id]))
+    productions = relationship('Production', backref=backref('parent',
+                                                             remote_side=[id]))
 
     def __unicode__(self):
         return u'%s -> %s' % (self.lhs, self.rhs)
 
     @classmethod
     def get_productions(cls, lhs=None, parent=None, lmk=None, rel=None):
-        parent_prod = aliased(Production)
-        q = cls.query.join(parent_prod, Production.parent)
+        q = cls.query
 
         if lhs is not None:
             q = q.filter(Production.lhs==lhs)
@@ -172,9 +172,108 @@ class Production(Base):
             q = q.filter(Production.relation==rel)
         
         if parent is not None:
-            q = q.filter(parent_prod.lhs==parent)
+            q = q.join(Production.parent, aliased=True).\
+                  filter(Production.lhs==parent).\
+                  reset_joinpoint()
         
         return q
+
+class WordCPT(Base):
+    id = Column(Integer, primary_key=True)
+
+    word = Column(String, nullable=False)
+    prob = Column(Float)
+
+    # conditioned on
+    pos = Column(String)
+    lmk = Column(Integer)
+    rel = Column(String)
+
+    fields = ['pos', 'lmk', 'rel']
+
+    def __unicode__(self):
+        given = [(f,getattr(self,f)) for f in self.fields if getattr(self,f) is not None]
+        given = ', '.join(u'%s=%r' % g for g in given)
+        if given:
+            return u'Pr(word=%r | %s) = %s' % (self.word, given, self.prob)
+        else:
+            return u'Pr(word=%r) = %s' % (self.word, self.prob)
+
+    @classmethod
+    def calc_prob(cls, word, **given):
+        """calculates conditional probability"""
+        wp = WordCPT(word=word, **given)
+        q = Word.get_words(**given)
+        const = q.count()  # normalizing constant
+        if const:
+            wp.prob = q.filter(Word.word==word).count() / const
+        return wp
+
+    @classmethod
+    def get_prob(cls, word, **given):
+        """gets probability from db"""
+        params = dict((f,None) for f in self.fields)
+        params.update(given)
+        return cls.query.filter_by(word=word, **given).one()
+
+    @classmethod
+    def probability(cls, word, **given):
+        try:
+            wp = cls.get_prob(word=word, **given)
+        except:
+            wp = cls.calc_prob(word=word, **given)
+            session.commit()
+        return wp.prob
+
+class ExpansionCPT(Base):
+    id = Column(Integer, primary_key=True)
+
+    rhs = Column(String, nullable=False)
+    prob = Column(Float)
+
+    # conditioned on
+    lhs = Column(String)
+    parent = Column(String)
+    lmk = Column(Integer)
+    rel = Column(String)
+
+    fields = ['lhs', 'parent', 'lmk', 'rel']
+
+    def __unicode__(self):
+        given = [(f,getattr(self,f)) for f in self.fields if getattr(self,f) is not None]
+        given = ', '.join(u'%s=%r' % g for g in given)
+        if given:
+            return u'Pr(rhs=%r | %s) = %s' % (self.rhs, given, self.prob)
+        else:
+            return u'Pr(rhs=%r) = %s' % (self.rhs, self.prob)
+
+    @classmethod
+    def calc_prob(cls, rhs, **given):
+        """calculates conditional probability"""
+        ep = ExpansionCPT(rhs=rhs, **given)
+        q = Production.get_productions(**given)
+        const = q.count()  # normalizing constant
+        if const:
+            ep.prob = q.filter_by(rhs=rhs).count() / const
+        return ep
+
+    @classmethod
+    def get_prob(cls, rhs, **given):
+        """gets probability stored in db"""
+        params = dict((f, None) for f in self.fields)
+        params.update(given)
+        return cls.query.filter_by(rhs=rhs, **params).one()
+
+    @classmethod
+    def probability(cls, rhs, **given):
+        try:
+            ep = cls.get_prob(rhs=rhs, **given)
+        except:
+            ep = cls.calc_prob(rhs=rhs, **given)
+            session.commit()
+        return ep.prob
+
+
 
 
 
