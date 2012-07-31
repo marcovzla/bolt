@@ -5,7 +5,7 @@ from __future__ import division
 
 import csv
 
-from models import Location, Word, Production, session
+from models import Location, Word, Production, Bigram, Trigram, session
 from utils import ModelScene, parent_landmark
 
 from table2d.landmark import Landmark
@@ -103,4 +103,6 @@ if __name__ == '__main__':
 
             location = Location(x=xloc, y=yloc)
             save_tree(modparse, location, rel_type, lmk, scene)
+            Bigram.make_bigrams(location.words)
+            Trigram.make_trigrams(location.words)
             session.commit()

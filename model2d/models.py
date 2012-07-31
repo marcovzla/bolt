@@ -9,7 +9,7 @@ from sqlalchemy.orm import relationship, backref, aliased, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.declarative import _declarative_constructor
 
-from utils import force_unicode
+from utils import force_unicode, bigrams, trigrams
 
 
 
@@ -135,6 +135,52 @@ class Word(Base):
             q = q.filter(Production.relation==rel)
 
         return q
+
+class Bigram(Base):
+    id = Column(Integer, primary_key=True)
+
+    w1_id = Column(Integer, ForeignKey('words.id'))
+    w2_id = Column(Integer, ForeignKey('words.id'))
+
+    w1 = relationship('Word', primaryjoin='Word.id==Bigram.w1_id')
+    w2 = relationship('Word', primaryjoin='Word.id==Bigram.w2_id')
+
+    def __unicode__(self):
+        return u'%s %s' % (self.w1, self.w2)
+
+    @classmethod
+    def make_bigrams(cls, words):
+        for w1,w2 in bigrams(words):
+            bigram = cls()
+            if isinstance(w1, Word):
+                bigram.w1 = w1
+            if isinstance(w2, Word):
+                bigram.w2 = w2
+
+class Trigram(Base):
+    id = Column(Integer, primary_key=True)
+
+    w1_id = Column(Integer, ForeignKey('words.id'))
+    w2_id = Column(Integer, ForeignKey('words.id'))
+    w3_id = Column(Integer, ForeignKey('words.id'))
+
+    w1 = relationship('Word', primaryjoin='Word.id==Trigram.w1_id')
+    w2 = relationship('Word', primaryjoin='Word.id==Trigram.w2_id')
+    w3 = relationship('Word', primaryjoin='Word.id==Trigram.w3_id')
+
+    def __unicode__(self):
+        return u'%s %s %s' % (self.w1, self.w2, self.w3)
+
+    @classmethod
+    def make_trigrams(cls, words):
+        for w1,w2,w3 in trigrams(words):
+            trigram = cls()
+            if isinstance(w1, Word):
+                trigram.w1 = w1
+            if isinstance(w2, Word):
+                trigram.w2 = w2
+            if isinstance(w3, Word):
+                trigram.w3 = w3
 
 class Production(Base):
     id = Column(Integer, primary_key=True)

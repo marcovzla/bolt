@@ -5,6 +5,7 @@ from __future__ import division
 import sys
 import random
 from itertools import product
+from functools import partial
 
 import numpy as np
 from planar import Vec2, BoundingBox
@@ -211,3 +212,11 @@ def force_unicode(s, encoding='utf-8', errors='strict'):
     else:
         return str(s).decode(encoding, errors)
 
+
+
+def ngrams(tokens, n, start_tk='<s>', end_tk='</s>'):
+    tokens = [start_tk] * (n-1) + tokens + [end_tk] * (n>1)
+    return [tuple(tokens[i:i+n]) for i in xrange(len(tokens)-n+1)]
+
+bigrams = partial(ngrams, n=2)
+trigrams = partial(ngrams, n=3)
