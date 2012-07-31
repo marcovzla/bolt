@@ -212,7 +212,7 @@ class WordCPT(Base):
     @classmethod
     def get_prob(cls, word, **given):
         """gets probability from db"""
-        params = dict((f,None) for f in self.fields)
+        params = dict((f,None) for f in cls.fields)
         params.update(given)
         return cls.query.filter_by(word=word, **given).one()
 
@@ -260,7 +260,7 @@ class ExpansionCPT(Base):
     @classmethod
     def get_prob(cls, rhs, **given):
         """gets probability stored in db"""
-        params = dict((f, None) for f in self.fields)
+        params = dict((f, None) for f in cls.fields)
         params.update(given)
         return cls.query.filter_by(rhs=rhs, **params).one()
 
