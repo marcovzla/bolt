@@ -4,29 +4,19 @@
 from __future__ import division
 
 import sys
+from operator import itemgetter
 
-from utils import ModelScene, categorical_sample, parent_landmark
+from utils import get_meaning, categorical_sample, parent_landmark, lmk_id, rel_type
 from models import Word, Production
+
+from location_from_sentence import m2s, get_sentence_posteriors
 
 NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
 
-scene = ModelScene()
 
 
 
-def lmk_id(lmk):
-    if lmk: return scene.get_landmark_id(lmk)
 
-def rel_type(rel):
-    if rel: return rel.__class__.__name__
-
-
-
-def get_meaning(loc):
-    lmk, rel = scene.sample_lmk_rel(loc)
-    print 'landmark: %s (%s)' % (lmk, lmk_id(lmk))
-    print 'relation:', rel_type(rel)
-    return lmk, rel
 
 
 
@@ -61,13 +51,27 @@ def get_words(expn, parent, lmk=None, rel=None):
 
 
 
-def generate_sentence(loc):
-    lmk, rel = get_meaning(loc)
-    rel_exp = get_expansion('RELATION', rel=rel)
-    lmk_exp = get_expansion('LANDMARK-PHRASE', lmk=lmk)
-    rel_words = get_words(rel_exp, 'RELATION', rel=rel)
-    lmk_words = get_words(lmk_exp, 'LANDMARK-PHRASE', lmk=lmk)
-    return ' '.join(rel_words + lmk_words)
+def generate_sentence(loc, consistent):
+    while True:
+        lmk, rel = get_meaning(loc=loc)
+        print lmk
+        print rel
+        rel_exp = get_expansion('RELATION', rel=rel)
+        lmk_exp = get_expansion('LANDMARK-PHRASE', lmk=lmk)
+        rel_words = get_words(rel_exp, 'RELATION', rel=rel)
+        lmk_words = get_words(lmk_exp, 'LANDMARK-PHRASE', lmk=lmk)
+        sentence = ' '.join(rel_words + lmk_words)
+
+        if consistent:
+            meaning1 = m2s(lmk,rel)
+            # get the most likely meaning for the generated sentence
+            posteriors = get_sentence_posteriors(sentence)
+            meaning2 = max(posteriors, key=itemgetter(1))[0]
+            # is this what we are trying to say?
+            if meaning1 != meaning2:
+                continue
+
+        return sentence
 
 
 
@@ -87,6 +91,9 @@ if __name__ == '__main__':
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument('-l', '--location', type=Point, required=True)
+    parser.add_argument('--consistent', action='store_true')
     args = parser.parse_args()
-    sentence = generate_sentence(args.location.xy)
+
+    sentence = generate_sentence(args.location.xy, args.consistent)
+
     print 'sentence:', sentence

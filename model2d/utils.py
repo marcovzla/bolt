@@ -128,6 +128,27 @@ class ModelScene(object):
 
 
 
+# we will use this instance of the scene
+scene = ModelScene()
+
+def lmk_id(lmk):
+    if lmk: return scene.get_landmark_id(lmk)
+
+def rel_type(rel):
+    if rel: return rel.__class__.__name__
+
+def get_meaning(loc=None, num_ancestors=None):
+    if not loc:
+        loc = scene.get_rand_loc()
+
+    lmk, rel = scene.sample_lmk_rel(loc, num_ancestors)
+    # print 'landmark: %s (%s)' % (lmk, lmk_id(lmk))
+    # print 'relation:', rel_type(rel)
+    return lmk, rel
+
+
+
+
 def categorical_sample(values, probs):
     index = np.random.multinomial(1, probs).nonzero()[0][0]
     value = values[index]

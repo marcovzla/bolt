@@ -8,18 +8,12 @@ from collections import defaultdict
 import numpy as np
 from nltk.tree import ParentedTree
 from parse import get_modparse
-from utils import ModelScene, parent_landmark
+from utils import parent_landmark, get_meaning, lmk_id, rel_type
 from models import WordCPT, ExpansionCPT
 
-scene = ModelScene()
 
 
 
-def lmk_id(lmk):
-    if lmk: return scene.get_landmark_id(lmk)
-
-def rel_type(rel):
-    if rel: return rel.__class__.__name__
 
 def count_lmk_phrases(t):
     return sum(1 for n in t.subtrees() if n.node == 'LANDMARK-PHRASE')
@@ -29,13 +23,6 @@ def m2s(lmk, rel):
 
 
 
-
-def try_meaning(num_ancestors=None):
-    # get a random location on the table
-    loc = scene.get_rand_loc()
-    # sample landmark and relation for location
-    lmk, rel = scene.sample_lmk_rel(loc, num_ancestors)
-    return lmk, rel
 
 
 
@@ -94,7 +81,7 @@ def get_tree_prob(tree, lmk=None, rel=None):
 
 
 
-def get_sentence_posteriors(sentence, iterations):
+def get_sentence_posteriors(sentence, iterations=1):
     probs = []
     meanings = []
 
@@ -105,7 +92,7 @@ def get_sentence_posteriors(sentence, iterations):
     num_ancestors = count_lmk_phrases(t) - 1
 
     for _ in xrange(iterations):
-        meaning = try_meaning(num_ancestors)
+        meaning = get_meaning(num_ancestors=num_ancestors)
         lmk, rel = meaning
         probs.append(get_tree_prob(t, *meaning))
         meanings.append(m2s(lmk,rel))
