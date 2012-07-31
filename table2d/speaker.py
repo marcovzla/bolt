@@ -37,11 +37,12 @@ class Speaker(object):
 
         sceness, landmarks = zip( *all_landmarks )
 
-        relset = choice([DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet])()
+        relset = choice([DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet])
         index = relset.sample_landmark(landmarks, poi)
 
         sampled_scene = sceness[index]
         sampled_landmark = landmarks[index]
+        # sampled_landmark = scene.landmarks['obj1'].representation.landmarks['ur_corner']
         head_on = self.get_head_on_viewpoint(sampled_landmark)
         sampled_relation = relset.sample_relation(head_on, sampled_landmark, poi)
 
@@ -83,83 +84,20 @@ class Speaker(object):
         # [0.25562221863528939, 1.0, 3.9120230054287899, Scene(3), table, <landmark.RectangleRepresentation>,
         #    m_surf, <relations.on object at 0x35cb350>, ['on the middle of the table']]
         '''
-        sampled_landmark = scene.landmarks['table'].representation.landmarks['m_surf']
-        relset = ContainmentRelationSet()
-        sampled_relation = relset.relations[0]
-        print 'distance',sampled_landmark.distance_to(poi)
-        print 'probability', sampled_relation.probability(poi,sampled_landmark)
-        head_on = self.get_head_on_viewpoint(sampled_landmark)
-        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
-        print description
-        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
-
-        # Sentence 2
-        # [0.21714724095161927, 1.0, 4.6051701859882321, Scene(3,), table, <landmark.RectangleRepresentation>,
-        #    n_surf, <relations.on object at 0x35a4910>, ['on the near half of the table']]
-
-        sampled_landmark = scene.landmarks['table'].representation.landmarks['n_surf']
-        relset = ContainmentRelationSet()
-        sampled_relation = relset.relations[0]
-        print 'distance',sampled_landmark.distance_to(poi)
-        print 'probability', sampled_relation.probability(poi,sampled_landmark)
-        head_on = self.get_head_on_viewpoint(sampled_landmark)
-        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
-        print description
-        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
-
-        # [0.21382721267862911, 0.99950034539156474, 4.6743365022194832, Scene(3), obj2, <landmark.RectangleRepresentation>,
-        #    obj2, <relations.not_is_not_adjacent object at 0x3e42e10>, ['not very far from the bottle', 'not quite far from the bottle', 'not really far from the bottle']]
-
-        sampled_landmark = scene.landmarks['obj2']
-        relset = DistanceRelationSet()
-        sampled_relation = relset.relations[11]
-        print 'distance',sampled_landmark.distance_to(poi)
-        print 'probability', sampled_relation.probability(poi,sampled_landmark)
-        head_on = self.get_head_on_viewpoint(sampled_landmark)
-        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
-        print description
-        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
-
-        # [0.18873916581775263, 1.0, 5.2983173665480985, Scene(3), table, <landmark.RectangleRepresentation>,
-        #    table, <relations.on object at 0x37f1710>, ['on the table']]
-
-        sampled_landmark = scene.landmarks['table']
-        relset = ContainmentRelationSet()
-        sampled_relation = relset.relations[0]
-        print 'distance',sampled_landmark.distance_to(poi)
-        print 'probability', sampled_relation.probability(poi,sampled_landmark)
-        head_on = self.get_head_on_viewpoint(sampled_landmark)
-        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
-        print description
-        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
-
-        # [0.21978422782979082, 0.99950034539156474, 4.5476436378574689, Scene(3), obj2, <landmark.RectangleRepresentation>,
-        #    lr_corner, <relations.not_is_not_adjacent object at 0x3e18a50>, ['not very far from the near corner of the right half of the bottle', 'not quite far from the near corner of the right half of the bottle', 'not really far from the near corner of the right half of the bottle']]
-
-        sampled_landmark = scene.landmarks['obj2'].representation.landmarks['r_surf'].representation.landmarks['lr_corner']
-        relset = DistanceRelationSet()
-        sampled_relation = relset.relations[11]
-        print 'distance',sampled_landmark.distance_to(poi)
-        print 'probability', sampled_relation.probability(poi,sampled_landmark)
-        head_on = self.get_head_on_viewpoint(sampled_landmark)
-        description = str(poi) + '; ' + sampled_relation.get_description() + " " + sampled_landmark.get_description(head_on)
-        print description
-        self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description)
-        '''
-
         sampled_landmark = scene.landmarks['table'].representation.landmarks['ll_corner']
         head_on = self.get_head_on_viewpoint(sampled_landmark)
-        relset = DistanceRelationSet()
+        relset = DistanceRelationSet
         sampled_relation = relset.relations[0](head_on,sampled_landmark,poi)
         print 'distance',sampled_landmark.distance_to(poi)
         print 'probability', sampled_relation.is_applicable()
         description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation)
         print description
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.1)
+        '''
 
-        sampled_landmark = scene.landmarks['table'].representation.landmarks['ll_corner']
+        sampled_landmark = scene.landmarks['obj2'].representation.landmarks['r_edge']
         head_on = self.get_head_on_viewpoint(sampled_landmark)
-        relset = OrientationRelationSet()
+        relset = OrientationRelationSet
         sampled_relation = relset.relations[0](head_on,sampled_landmark,poi)
         print 'distance',sampled_landmark.distance_to(poi)
         print 'probability', sampled_relation.is_applicable()
@@ -182,8 +120,7 @@ class Speaker(object):
                         head_on = self.get_head_on_viewpoint(lmk)
                         lmk_desc = language_generator.get_landmark_description(head_on, lmk)
 
-                        for relset_f in [DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet]:
-                            relset = relset_f()
+                        for relset in [DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet]:
 
                             for relation in relset.relations: # we have a relation
                                 entropy = self.get_entropy(self.get_probabilities(s, relation, head_on, lmk, 0.1))
