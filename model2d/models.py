@@ -190,7 +190,10 @@ class Production(Base):
 
     # semantic content
     landmark = Column(Integer)
+    landmark_class = Column(Integer)
     relation = Column(String)
+    relation_distance_class = Column(Integer)
+    relation_degree_class = Column(Integer)
 
     # belongs_to
     parent_id = Column(Integer, ForeignKey('productions.id'))

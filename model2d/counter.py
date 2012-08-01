@@ -38,14 +38,20 @@ def save_tree(tree, loc, rel, lmk, scene, parent=None):
         # some productions are related to semantic representation
         if prod.lhs == 'RELATION':
             prod.relation = rel
+            if hasattr(rel, 'measurement'):
+                prod.relation_distance_class = rel.best_distance_class
+                prod.relation_degree_class = rel.best_degree_class
 
         elif prod.lhs == 'LANDMARK-PHRASE':
             prod.landmark = scene.get_landmark_id(lmk)
+            prod.landmark_class = lmk.object_class
             # next landmark phrase will need the parent landmark
             lmk = parent_landmark(lmk)
 
         elif prod.lhs == 'LANDMARK':
+            # LANDMARK has the same landmark as its parent LANDMARK-PHRASE
             prod.landmark = parent.landmark
+            prod.landmark_class = parent.landmark_class
 
         # save subtrees, keeping track of parent
         for subtree in tree:

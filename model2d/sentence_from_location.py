@@ -54,8 +54,8 @@ def get_words(expn, parent, lmk=None, rel=None):
 def generate_sentence(loc, consistent):
     while True:
         lmk, rel = get_meaning(loc=loc)
-        print lmk
-        print rel
+        # print lmk
+        # print rel
         rel_exp = get_expansion('RELATION', rel=rel)
         lmk_exp = get_expansion('LANDMARK-PHRASE', lmk=lmk)
         rel_words = get_words(rel_exp, 'RELATION', rel=rel)
