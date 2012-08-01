@@ -4,6 +4,7 @@
 from __future__ import division
 
 from collections import defaultdict
+from operator import itemgetter
 
 import numpy as np
 from nltk.tree import ParentedTree
@@ -81,6 +82,7 @@ def get_sentence_posteriors(sentence, iterations=1):
     print 'parsing ...'
     modparse = get_modparse(sentence)
     t = ParentedTree.parse(modparse)
+    print '\n%s\n' % t.pprint()
     num_ancestors = count_lmk_phrases(t) - 1
 
     for _ in xrange(iterations):
@@ -105,5 +107,5 @@ if __name__ == '__main__':
 
     posteriors = get_sentence_posteriors(args.sentence, args.iterations)
 
-    for m,p in posteriors:
+    for m,p in sorted(posteriors, key=itemgetter(1)):
         print 'Meaning: %s \t\t Probability: %0.4f' % (m,p)
