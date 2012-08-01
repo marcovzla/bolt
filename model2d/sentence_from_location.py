@@ -6,17 +6,13 @@ from __future__ import division
 import sys
 from operator import itemgetter
 
-from utils import get_meaning, categorical_sample, parent_landmark, lmk_id, rel_type
+from utils import (get_meaning, categorical_sample, parent_landmark,
+                   lmk_id, rel_type, m2s, count_lmk_phrases)
 from models import Word, Production
 
-from location_from_sentence import m2s, get_sentence_posteriors
+from location_from_sentence import get_sentence_posteriors
 
 NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
-
-
-
-
-
 
 
 

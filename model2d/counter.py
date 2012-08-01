@@ -6,7 +6,7 @@ from __future__ import division
 import csv
 
 from models import Location, Word, Production, Bigram, Trigram, session
-from utils import ModelScene, parent_landmark
+from utils import parent_landmark, count_lmk_phrases, get_meaning, rel_type, lmk_id
 
 from table2d.landmark import Landmark
 
@@ -14,12 +14,7 @@ from nltk.tree import ParentedTree
 
 
 
-def count_lmk_phrases(t):
-    return sum(1 for n in t.subtrees() if n.node == 'LANDMARK-PHRASE')
-
-
-
-def save_tree(tree, loc, rel, lmk, scene, parent=None):
+def save_tree(tree, loc, rel, lmk, parent=None):
     if len(tree.productions()) == 1:
         # if this tree only has one production
         # it means that its child is a terminal (word)
@@ -37,13 +32,13 @@ def save_tree(tree, loc, rel, lmk, scene, parent=None):
 
         # some productions are related to semantic representation
         if prod.lhs == 'RELATION':
-            prod.relation = rel
+            prod.relation = rel_type(rel)
             if hasattr(rel, 'measurement'):
-                prod.relation_distance_class = rel.best_distance_class
-                prod.relation_degree_class = rel.best_degree_class
+                prod.relation_distance_class = rel.measurement.best_distance_class
+                prod.relation_degree_class = rel.measurement.best_degree_class
 
         elif prod.lhs == 'LANDMARK-PHRASE':
-            prod.landmark = scene.get_landmark_id(lmk)
+            prod.landmark = lmk_id(lmk)
             prod.landmark_class = lmk.object_class
             # next landmark phrase will need the parent landmark
             lmk = parent_landmark(lmk)
@@ -55,7 +50,7 @@ def save_tree(tree, loc, rel, lmk, scene, parent=None):
 
         # save subtrees, keeping track of parent
         for subtree in tree:
-            save_tree(subtree, loc, rel, lmk, scene, prod)
+            save_tree(subtree, loc, rel, lmk, prod)
 
 
 
@@ -66,9 +61,6 @@ if __name__ == '__main__':
     parser.add_argument('-v', '--verbose', action='store_true')
     parser.add_argument('-i', '--iterations', type=int, default=1)
     args = parser.parse_args()
-
-    # initialize our default scene
-    scene = ModelScene()
 
     reader = csv.reader(args.csvfile, lineterminator='\n')
     next(reader)  # skip headers
@@ -91,16 +83,13 @@ if __name__ == '__main__':
 
         # sample `args.iterations` times for each sentence
         for _ in xrange(args.iterations):
-            lmk, rel = scene.sample_lmk_rel(loc, num_ancestors)
-
-            # relation type
-            rel_type = rel.__class__.__name__
+            lmk, rel = get_meaning(loc, num_ancestors)
 
             if args.verbose:
                 print 'utterance:', repr(sentence)
                 print 'location: %s' % repr(loc)
-                print 'landmark: %s (%s)' % (lmk, scene.get_landmark_id(lmk))
-                print 'relation: %s' % rel_type
+                print 'landmark: %s (%s)' % (lmk, lmk_id(lmk))
+                print 'relation: %s' % rel_type(rel)
                 print 'parse:'
                 print parse.pprint()
                 print 'modparse:'
@@ -108,7 +97,7 @@ if __name__ == '__main__':
                 print '-' * 70
 
             location = Location(x=xloc, y=yloc)
-            save_tree(modparse, location, rel_type, lmk, scene)
+            save_tree(modparse, location, rel, lmk)
             Bigram.make_bigrams(location.words)
             Trigram.make_trigrams(location.words)
             session.commit()

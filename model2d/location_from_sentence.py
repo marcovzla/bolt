@@ -8,21 +8,9 @@ from collections import defaultdict
 import numpy as np
 from nltk.tree import ParentedTree
 from parse import get_modparse
-from utils import parent_landmark, get_meaning, lmk_id, rel_type
+from utils import (parent_landmark, get_meaning, lmk_id, rel_type, m2s,
+                   count_lmk_phrases)
 from models import WordCPT, ExpansionCPT
-
-
-
-
-
-def count_lmk_phrases(t):
-    return sum(1 for n in t.subtrees() if n.node == 'LANDMARK-PHRASE')
-
-def m2s(lmk, rel):
-    return '<lmk=%s(%s), rel=%s>' % (repr(lmk), lmk_id(lmk), rel_type(rel))
-
-
-
 
 
 
@@ -62,6 +50,9 @@ def get_tree_prob(tree, lmk=None, rel=None):
             rel = None
 
             if parent == 'LANDMARK-PHRASE':
+                # if the current node is a LANDMARK-PHRASE and the parent node
+                # is also a LANDMARK-PHRASE then we should move to the parent
+                # of the current landmark
                 lmk = parent_landmark(lmk)
 
         if not parent:
@@ -74,6 +65,7 @@ def get_tree_prob(tree, lmk=None, rel=None):
             print p, repr(lhs), '->', repr(rhs), 'parent=%r'%parent, m2s(lmk,rel)
         prob *= p
 
+        # call get_tree_prob recursively for each subtree
         for subtree in tree:
             prob *= get_tree_prob(subtree, lmk, rel)
 

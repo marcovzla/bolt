@@ -21,11 +21,17 @@ from table2d.relation import (DistanceRelationSet,
 
 
 def parent_landmark(lmk):
+    """gets a landmark and returns its parent landmark
+    or None if it doesn't have one"""
     if lmk:
         parent = lmk.parent
         if parent and not isinstance(parent, Landmark):
             parent = parent.parent_landmark
         return parent
+
+def count_lmk_phrases(t):
+    """gets an nltk Tree and returns the number of LANDMARK-PHRASE nodes"""
+    return sum(1 for n in t.subtrees() if n.node == 'LANDMARK-PHRASE')
 
 
 
@@ -40,6 +46,7 @@ def get_head_on_viewpoint(landmark, reference):
 
 
 
+# a wrapper for a table2d scene
 class ModelScene(object):
     def __init__(self):
         self.scene = Scene(3)
@@ -132,6 +139,9 @@ class ModelScene(object):
 # we will use this instance of the scene
 scene = ModelScene()
 
+
+
+# helper functions
 def lmk_id(lmk):
     if lmk: return scene.get_landmark_id(lmk)
 
@@ -147,6 +157,10 @@ def get_meaning(loc=None, num_ancestors=None):
     # print 'relation:', rel_type(rel)
     return lmk, rel
 
+def m2s(lmk, rel):
+    """returns a string that describes the gives landmark and relation"""
+    return '<lmk=%s(%s), rel=%s>' % (repr(lmk), lmk_id(lmk), rel_type(rel))
+
 
 
 
@@ -157,6 +171,7 @@ def categorical_sample(values, probs):
 
 
 
+# based on matlab's mvnpdf
 def mvnpdf(x, mu=0, sigma=None):
     """multivariate normal probability density function"""
 
@@ -214,6 +229,11 @@ def force_unicode(s, encoding='utf-8', errors='strict'):
 
 
 
+# generates a list of tuples of size `n`
+# each tuple is an ngram and includes the right number
+# of start and end tokens ('<s>' and '</s>' by default)
+# `tokens` is a list of tokens which could be strings (words)
+# or objects like `models.Word`
 def ngrams(tokens, n, start_tk='<s>', end_tk='</s>'):
     tokens = [start_tk] * (n-1) + tokens + [end_tk] * (n>1)
     return [tuple(tokens[i:i+n]) for i in xrange(len(tokens)-n+1)]
