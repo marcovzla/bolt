@@ -2,7 +2,7 @@ from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRel
 from numpy import array, arange, zeros, log, argmin, set_printoptions
 from random import choice
 from matplotlib import pyplot as plt
-from landmark import PointRepresentation, LineRepresentation, RectangleRepresentation
+from landmark import PointRepresentation, LineRepresentation, ObjectLineRepresentation, RectangleRepresentation
 from planar import Vec2
 import sys
 from textwrap import wrap
@@ -42,7 +42,7 @@ class Speaker(object):
 
         sampled_scene = sceness[index]
         sampled_landmark = landmarks[index]
-        # sampled_landmark = scene.landmarks['obj1'].representation.landmarks['ur_corner']
+        # sampled_landmark = scene.landmarks['ol1'].representation.landmarks['end']
         head_on = self.get_head_on_viewpoint(sampled_landmark)
         sampled_relation = relset.sample_relation(head_on, sampled_landmark, poi)
 
@@ -204,7 +204,11 @@ class Speaker(object):
         plt.colorbar()
 
         for lmk in scene.landmarks.values():
-            if isinstance(lmk.representation, RectangleRepresentation):
+            if isinstance(lmk.representation, ObjectLineRepresentation):
+                xs = [lmk.representation.line.start.x, lmk.representation.line.end.x]
+                ys = [lmk.representation.line.start.y, lmk.representation.line.end.y]
+                plt.fill(xs,ys,facecolor='none',linewidth=2)
+            elif isinstance(lmk.representation, RectangleRepresentation):
                 rect = lmk.representation.rect
                 xs = [rect.min_point.x,rect.min_point.x,rect.max_point.x,rect.max_point.x]
                 ys = [rect.min_point.y,rect.max_point.y,rect.max_point.y,rect.min_point.y]

@@ -8,6 +8,9 @@ from planar.line import Line
 from random import choice
 from uuid import uuid4
 from math import sqrt
+import numpy as np
+import matplotlib.pyplot as plt
+
 
 def ccw(A,B,C):
     ccw = (C.y-A.y)*(B.x-A.x) > (B.y-A.y)*(C.x-A.x)
@@ -90,6 +93,7 @@ class Landmark(object):
     HALF = 8
     END = 9
     SIDE = 10
+    LINE = 11
 
     def __init__(self, name, representation, parent, object_class):
         self.name = name
@@ -211,7 +215,7 @@ class PointRepresentation(AbstractRepresentation):
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
-        return self.location == other.location
+        return self.location.almost_equals(other.location)
 
     def get_points(self):
         return [self.location]
@@ -227,6 +231,8 @@ class LineRepresentation(AbstractRepresentation):
     def __init__(self, orientation='height', line=LineSegment.from_points([Vec2(0, 0), Vec2(1, 0)]), alt_of=None):
         super(LineRepresentation, self).__init__(alt_of)
         self.line = line
+        # extend the LineSegment to include a bounding_box field, planar doesn't have that originally
+        self.line.bounding_box = BoundingBox.from_points(self.line.points)
         self.num_dim = 1
         self.middle = line.mid
         self.alt_representations = [PointRepresentation(self.line.mid, self)]
@@ -234,12 +240,11 @@ class LineRepresentation(AbstractRepresentation):
         classes = [Landmark.END, Landmark.MIDDLE, Landmark.END] if orientation == 'height' \
              else [Landmark.SIDE, Landmark.MIDDLE, Landmark.SIDE]
 
-        self.landmarks = \
-            {
-                'start':  Landmark('start',  PointRepresentation(self.line.start), self, classes[0]),
-                'end':    Landmark('end',    PointRepresentation(self.line.end),   self, classes[2]),
-                'middle': Landmark('middle', PointRepresentation(self.line.mid),   self, classes[1]),
-            }
+        self.landmarks = {
+            'start':  Landmark('start',  PointRepresentation(self.line.start), self, classes[0]),
+            'end':    Landmark('end',    PointRepresentation(self.line.end),   self, classes[2]),
+            'middle': Landmark('middle', PointRepresentation(self.line.mid),   self, classes[1]),
+        }
 
     def my_project_point(self, point):
         return self.line.line.project(point)
@@ -280,6 +285,22 @@ class LineRepresentation(AbstractRepresentation):
 
     def get_primary_axes(self):
         return [self.line.line, self.line.line.perpendicular(self.line.mid)]
+
+
+class ObjectLineRepresentation(LineRepresentation):
+    def __init__(self, lmk_group, alt_of=None):
+        centers = np.array([lmk.representation.middle for lmk in lmk_group])
+        x = centers[:,0]
+        y = centers[:,1]
+        A = np.vstack([x, np.ones(len(x))]).T
+        m, c = np.linalg.lstsq(A, y)[0]
+        lxy = zip(x, m*x + c)
+        points = [Vec2(px,py) for px,py in sorted(lxy)]
+
+        super(ObjectLineRepresentation, self).__init__(line=LineSegment.from_points(points),alt_of=alt_of)
+
+        sorted_idx = sorted(range(len(lxy)), key=lxy.__getitem__)
+        self.landmark_group = [lmk_group[idx] for idx in sorted_idx]
 
 
 class RectangleRepresentation(AbstractRepresentation):

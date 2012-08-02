@@ -16,6 +16,7 @@ class_to_words = {
     Landmark.HALF:     {'N' : ['half']},
     Landmark.END:      {'N' : ['end']},
     Landmark.SIDE:     {'N' : ['side']},
+    Landmark.LINE:     {'N' : ['line']},
     FromRelation:      {'P' : ['from']},
     ToRelation:        {'P' : ['to']},
     NextToRelation:    {'P' : ['next to']},
@@ -38,62 +39,10 @@ class_to_words = {
 }
 
 def get_landmark_description(perspective, landmark):
-    '''
-    top = landmark.get_top_parent()
-    midpoint = top.middle
-    lr_line = Line.from_points([perspective, midpoint])
-    nf_line = lr_line.perpendicular(midpoint)
-
-    adj = ''
-    if landmark.parent:
-        parent_left = True
-        parent_right = True
-        parent_near = True
-        parent_far = True
-
-        for point in landmark.parent.get_points():
-            if not (lr_line.point_left(point) or lr_line.contains_point(point)):
-                parent_left = False
-            if not (lr_line.point_right(point) or lr_line.contains_point(point)):
-                parent_right = False
-            if not (nf_line.point_left(point) or nf_line.contains_point(point)):
-                parent_near = False
-            if not (nf_line.point_right(point) or nf_line.contains_point(point)):
-                parent_far = False
-
-        parent_lr = parent_left or parent_right and not (parent_left and parent_right)
-        parent_nf = parent_near or parent_far and not (parent_near and parent_far)
-
-        landmark_left, landmark_right, landmark_near, landmark_far = True, True, True, True
-        for point in landmark.representation.get_points():
-            if not (lr_line.point_left(point) or lr_line.contains_point(point)):
-                landmark_left = False
-            if not (lr_line.point_right(point) or lr_line.contains_point(point)):
-                landmark_right = False
-            if not (nf_line.point_left(point) or nf_line.contains_point(point)):
-                landmark_near = False
-            if not (nf_line.point_right(point) or nf_line.contains_point(point)):
-                landmark_far = False
-
-        if not parent_nf:
-            if landmark_near and not landmark_far:
-                adj += 'near '
-            if landmark_far and not landmark_near:
-                adj += 'far '
-        if not parent_lr:
-            if landmark_left and not landmark_right:
-                adj += 'left '
-            if landmark_right and not landmark_left:
-                adj += 'right '
-
-    noun = choice(class_to_words[landmark.object_class])
-    desc = 'the ' + adj + noun
-    '''
-
     noun = choice(class_to_words[landmark.object_class]['N'])
     desc = 'the '
-    if landmark.parent and landmark.parent.parent_landmark:
 
+    if landmark.parent and landmark.parent.parent_landmark:
         '''
         options = set(OrientationRelationSet.relations)
         for point in [landmark.representation.middle]:
@@ -101,7 +50,7 @@ def get_landmark_description(perspective, landmark):
             new_opts = OrientationRelationSet.get_applicable_relations(perspective, middle_lmk, point, use_distance=False)
             options = set(map(type, new_opts)).intersection(options)
         '''
-        middle_lmk = Landmark('', PointRepresentation(landmark.parent.middle), None, None)
+        middle_lmk = Landmark('', PointRepresentation(landmark.parent.middle), landmark.parent, None)
         options = OrientationRelationSet.get_applicable_relations(perspective, middle_lmk, landmark.representation.middle, use_distance=False)
         for option in options:
             desc += choice( class_to_words[type(option)]['A'] ) + ' '
