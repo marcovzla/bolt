@@ -1,6 +1,5 @@
-% if a PP has a NP followed by a PP
-% move the second PP to be a child of NP
-PP [ <-2 NP=np & <-1 PP=pp ]
+% remove ADJP that is a direct descendant of LOCATION-PHRASE
+ADJP=adjp [ > LOCATION-PHRASE & <-1 PP=pp ]
 
-adjoinF (NP @) np
-move pp $- np
+excise pp pp
+relabel adjp PP

@@ -1,5 +1,3 @@
-% move every not into its ADJP right sibling
-RB=rb [ < not & $+ ADJP=adjp ]
+LOCATION-PHRASE < S=s
 
-move rb >1 adjp
-relabel rb NOT
+excise s s

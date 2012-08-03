@@ -1,6 +1,3 @@
-% fix for "in front of"
-LOCATION-PHRASE < (PP [ < (IN < in) & <-1 (NP=np1 [ <1 (NP=np2 << front) & <-1 PP=pp ]) ])
+LOCATION-PHRASE [ <1 RB=rb & <2 PP=pp ]
 
-excise pp pp
-excise np2 np2
-excise np1 np1
+move rb >1 pp

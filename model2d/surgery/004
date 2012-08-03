@@ -1,5 +1,5 @@
-% remove ADJP that is a direct descendant of LOCATION-PHRASE
-ADJP=adjp [ > LOCATION-PHRASE & <-1 PP=pp ]
+% close may be tagged as a verb
+LOCATION-PHRASE < (VP=vp < VB=vb)
 
-excise pp pp
-relabel adjp PP
+excise vp vp
+relabel vb RB
