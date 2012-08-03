@@ -42,25 +42,14 @@ def get_landmark_description(perspective, landmark):
     noun = choice(class_to_words[landmark.object_class]['N'])
     desc = 'the '
 
-    if landmark.parent and landmark.parent.parent_landmark:
-        '''
-        options = set(OrientationRelationSet.relations)
-        for point in [landmark.representation.middle]:
-            middle_lmk = Landmark('', PointRepresentation(landmark.parent.middle), None, None)
-            new_opts = OrientationRelationSet.get_applicable_relations(perspective, middle_lmk, point, use_distance=False)
-            options = set(map(type, new_opts)).intersection(options)
-        '''
-        middle_lmk = Landmark('', PointRepresentation(landmark.parent.middle), landmark.parent, None)
-        options = OrientationRelationSet.get_applicable_relations(perspective, middle_lmk, landmark.representation.middle, use_distance=False)
-        for option in options:
-            desc += choice( class_to_words[type(option)]['A'] ) + ' '
-        desc += noun
+    for option in landmark.ori_relations:
+        desc += choice( class_to_words[type(option)]['A'] ) + ' '
+    desc += noun
 
+    if landmark.parent and landmark.parent.parent_landmark:
         p_desc = get_landmark_description(perspective, landmark.parent.parent_landmark)
         if p_desc:
             desc += ' of ' + p_desc
-    else:
-        desc += noun
 
     return desc
 

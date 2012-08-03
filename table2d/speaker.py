@@ -1,5 +1,5 @@
 from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRelationSet, VeryCloseDistanceRelation
-from numpy import array, arange, zeros, log, argmin, set_printoptions
+from numpy import array, arange, zeros, log, argmin, set_printoptions, random
 from random import choice
 from matplotlib import pyplot as plt
 from landmark import PointRepresentation, LineRepresentation, ObjectLineRepresentation, RectangleRepresentation
@@ -7,6 +7,8 @@ from planar import Vec2
 import sys
 from textwrap import wrap
 import language_generator
+from landmark import Landmark
+
 
 
 class Speaker(object):
@@ -44,6 +46,7 @@ class Speaker(object):
         sampled_landmark = landmarks[index]
         # sampled_landmark = scene.landmarks['ol1'].representation.landmarks['end']
         head_on = self.get_head_on_viewpoint(sampled_landmark)
+        self.set_orientations(sampled_landmark, head_on)
         sampled_relation = relset.sample_relation(head_on, sampled_landmark, poi)
 
         # sampled_landmark = sampled_scene.landmarks['obj2'].representation.landmarks['ul_corner']
@@ -56,6 +59,53 @@ class Speaker(object):
         print description
 
         if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, sampled_relation, description, 0.1)
+
+    def communicate(self, scene, visualize=False, max_level=-1):
+        all_landmarks = []
+        all_relations = []
+
+        for scene_lmk in scene.landmarks.values():
+            all_landmarks.append(scene_lmk)
+
+            representations = [scene_lmk.representation]
+            representations.extend(scene_lmk.representation.get_alt_representations())
+
+            for representation in representations:
+                all_landmarks.extend(representation.get_landmarks(max_level))
+
+        for rset in [DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet]:
+            all_relations.extend(rset.relations)
+
+        sampled_landmark = choice(all_landmarks)
+        sampled_relation = choice(all_relations)
+        perspective = self.get_head_on_viewpoint(sampled_landmark)
+        self.set_orientations(sampled_landmark, perspective)
+
+        poi = self.sample_poi(scene.landmarks['table'].representation.get_geometry().bounding_box, sampled_relation, perspective, sampled_landmark)
+
+        sampled_relation = sampled_relation(perspective, sampled_landmark, poi)
+        description = str(poi) + '; ' + language_generator.describe(perspective, sampled_landmark, sampled_relation)
+        print description
+
+        if visualize: self.visualize(scene, poi, perspective, sampled_landmark, sampled_relation, description, 0.1)
+
+    def set_orientations(self, landmark, perspective):
+        options = set()
+        if landmark.parent and landmark.parent.parent_landmark:
+            middle_lmk = Landmark('', PointRepresentation(landmark.parent.middle), landmark.parent, None)
+            options = OrientationRelationSet.get_applicable_relations(perspective, middle_lmk, landmark.representation.middle, use_distance=False)
+
+            par_lmk = landmark.parent.parent_landmark
+            if par_lmk.parent and par_lmk.parent.parent_landmark:
+                par_middle_lmk = Landmark('', PointRepresentation(par_lmk.parent.middle), par_lmk.parent, None)
+                par_options = OrientationRelationSet.get_applicable_relations(perspective, par_middle_lmk, par_lmk.representation.middle, use_distance=False)
+            else:
+                par_options = []
+
+            options = set(options).difference(set(par_options))
+            self.set_orientations(par_lmk, perspective)
+
+        landmark.ori_relations = options
 
     def talk_to_baby(self, scene, perspectives, how_many_each=10000):
 
@@ -123,7 +173,7 @@ class Speaker(object):
                         for relset in [DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet]:
 
                             for relation in relset.relations: # we have a relation
-                                entropy = self.get_entropy(self.get_probabilities(s, relation, head_on, lmk, 0.1))
+                                entropy = self.get_entropy(self.get_probabilities(s, relation, head_on, lmk, 0.1)[0])
                                 relation = relation(head_on, lmk, poi)
                                 applies = relation.is_applicable()
 
@@ -148,21 +198,62 @@ class Speaker(object):
 
         return reversed(sorted(all_desc))
 
+
+    def get_probabilities_box(self, bounding_box, relation, perspective, landmark, step=0.02):
+        xs = arange(bounding_box.min_point.x, bounding_box.max_point.x, step)
+        ys = arange(bounding_box.min_point.y, bounding_box.max_point.y, step)
+
+        probabilities = zeros( (len(ys), len(xs)) )
+        points = zeros( (len(ys), len(xs)), dtype=object )
+
+        for i,x in enumerate(xs):
+            for j,y in enumerate(ys):
+                p = Vec2(x,y)
+                points[j,i] = p
+                rel = relation( perspective, landmark, p )
+                probabilities[j,i] = rel.is_applicable()
+
+        return probabilities, points
+
     def get_probabilities(self, scene, relation, perspective, landmark, step=0.02):
         scene_bb = scene.get_bounding_box()
         scene_bb = scene_bb.inflate( Vec2(scene_bb.width*0.5,scene_bb.height*0.5) )
+        return self.get_probabilities_box(scene_bb, relation, perspective, landmark, step)
 
-        xs = arange(scene_bb.min_point.x, scene_bb.max_point.x, step)
-        ys = arange(scene_bb.min_point.y, scene_bb.max_point.y, step)
+    def evaluate_poi(self, poi, bounding_box, relation, perspective, landmark, step=0.02):
+        probs, points = self.get_probabilities_box(bounding_box, relation, perspective, landmark, step)
+        rel = relation( perspective, landmark, poi )
+        poi_prob = rel.is_applicable()
+        return poi_prob / (probs.sum() + poi_prob)
 
-        probabilities = zeros(  ( len(ys),len(xs) )  )
-        for i,x in enumerate(xs):
-            for j,y in enumerate(ys):
-                rel = relation( perspective, landmark, Vec2(x,y) )
-                probabilities[j,i] = rel.is_applicable()
+    def sample_relation(self, poi, bounding_box, perspective, landmark, step=0.02):
+        """
+        Sample a relation given a point of interest and landmark.
+        Evaluate each relation and probabilisticaly choose the one that is likely to
+        generate the poi given a landmark.
+        """
+        rel_scores = []
+        rel_classes = []
 
-        return probabilities
+        for s in [DistanceRelationSet, OrientationRelationSet, ContainmentRelationSet]:
+            for rel in s.relations:
+                rel_scores.append(self.evaluate_poi(poi, bounding_box, rel, perspective, landmark, step))
+                rel_classes.append(rel)
 
+        rel_scores = array(rel_scores)
+        rel_probabilities = rel_scores/sum(rel_scores)
+        index = rel_probabilities.cumsum().searchsorted( random.sample(1) )[0]
+
+        return rel_classes[index]
+
+    def sample_poi(self, bounding_box, relation, perspective, landmark, step=0.02):
+        """
+        Sample a point of interest given a relation and landmark.
+        """
+        probs, points = self.get_probabilities_box(bounding_box, relation, perspective, landmark, step)
+        probs /= probs.sum()
+        index = probs.cumsum().searchsorted( random.sample(1) )[0]
+        return points.flatten()[index]
 
     def get_entropy(self, probabilities):
         probabilities += 1e-15
