@@ -6,12 +6,12 @@ Created on Jul 22, 2012
 import heapq
 
 
-def bundleSearch(scene, groups, intersection = 0):
+def bundleSearch(scene, groups, intersection = 0,beamwidth=10):
     global allow_intersection 
     allow_intersection = intersection
     
     print "number of groups:",len(groups)
-    
+    expanded = 0
     singletonCost = 1
     for i in scene:
         groups.append((singletonCost,[i[0]]))
@@ -22,11 +22,15 @@ def bundleSearch(scene, groups, intersection = 0):
     explored = set()
     while frontier.isEmpty() == False:
         node = frontier.pop()
+        expanded += 1
         if node.getState() >= frozenset(map(lambda x:x[0],scene)):
             path = node.traceback()
+            print "Expanded",expanded
             return path
         explored.add(node.state)
         successors = node.getSuccessors(scene,groups)
+        successors.sort(key= lambda s: s.gainratio,reverse=True)
+        successors = successors[0:beamwidth]
         for child in successors:
             if child.state not in explored and frontier.contains(child.state)==False:
                 frontier.push(child, child.cost)
@@ -44,6 +48,12 @@ class BNode:
             self.cost = parent.cost + cost
         else:
             self.cost=cost
+        self.gain = len(self.state)-self.cost
+
+        if len(self.state)>0:
+            self.gainratio = self.gain/len(self.state)
+        else: self.gainratio = 0
+
             
     def getState(self):
         return self.state
@@ -52,12 +62,9 @@ class BNode:
         successors = []
         for g in groups:
             if len(self.state.intersection(g[1]))<=allow_intersection:
-#            if self.state.isdisjoint(g[1]):
-#                print "prestate",self.state,g[1]
                 asd=BNode(self.state.union(g[1]),self,g,g[0])
-#                print "state",asd.state, "cost", asd.cost
-                successors.append(asd)
-#                print()
+                if asd.gain > 0:
+                    successors.append(asd)
         return successors
         
 

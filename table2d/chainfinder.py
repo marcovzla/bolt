@@ -54,28 +54,15 @@ def main():
 
     
 
-def findChains(inputObjectSet, 
-               distance_limit=2, angle_limit=0.9, min_line_length=3,
-               anglevar_weight= .05, distvar_weight=.1,dist_weight=1,
-               allow_intersection=0):
+def findChains(inputObjectSet, params = CParams(2,0.9,3,0.05,0.1,1,0)):
     '''finds all the chains, then returns the ones that satisfy constraints, sorted from best to worst.'''
-    
-    params = CParams(distance_limit, angle_limit, min_line_length,
-               anglevar_weight, distvar_weight,dist_weight,
-               allow_intersection)
+  
     bestlines = []
     explored = set()
     skipped = 0
     print inputObjectSet
     pairwise = util.find_pairs(inputObjectSet)
     pairwise.sort(key=lambda p: util.findDistance(p[0].position, p[1].position),reverse=False)
-#    for pair in pairwise:
-#        start,finish = pair[0],pair[1]
-#        result = chainSearch(start, finish, inputObjectSet,params)
-#        if result != None: 
-#            bestlines.append(result)
-#            s = map(frozenset,util.find_pairs(result[0:len(result)-1]))
-#            map(explored.add,s)
     skipped = 0
     timestart = time.time()
     for pair in pairwise:
@@ -93,24 +80,19 @@ def findChains(inputObjectSet,
     verybest = []
     costSum = 0
     for line in bestlines:
-        if len(line)>min_line_length:
+        if len(line)>params.min_line_length:
             verybest.append(line)
-#            line[len(line)-1] = line[len(line)-1]/(len(line)-1)
-    #verybest.sort(key=lambda l: l[len(l)-1])
     verybest.sort(key=lambda l: len(l),reverse=True)
     costs = map(lambda l: l.pop()+2,verybest)
     timefinish = time.time()
     print "chain search time:",timefinish-timestart
-#    print zip(costs,verybest)
-#    print costs
     print "SCENE EVAL"
     timestart = time.time()
-    evali = sceneEval.bundleSearch(util.totuple(inputObjectSet), zip(costs,verybest),allow_intersection)
+    evali = sceneEval.bundleSearch(util.totuple(inputObjectSet), zip(costs,verybest),params.allow_intersection)
     timefinish = time.time()
     print "full-scene eval time:" ,timefinish-timestart
     print""
     return evali
-#    return zip(costs,verybest)
     
             
 def chainSearch(start, finish, points,params):
