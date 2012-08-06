@@ -1,13 +1,12 @@
 from Tkinter import *
-from collections import namedtuple
+
 import chainfinder
 import numpy as np
 import pickle
+from util import ClusterParams,PhysicalObject
 import tkFileDialog
 
-CParams = namedtuple("ChainParams",['distance_limit', 'angle_limit', 'min_line_length',
-               'anglevar_weight', 'distvar_weight','dist_weight',
-               'allow_intersection'])
+
 
 
 class PlaygroundWindow:
@@ -105,7 +104,7 @@ class PlaygroundWindow:
 
 
     def research(self):
-        params = CParams(eval(self.distance_limit.get()),
+        params = ClusterParams(eval(self.distance_limit.get()),
                          eval(self.angle_limit.get()),
                          eval(self.min_line_length.get()),
                          eval(self.anglevar_weight.get()),
@@ -116,7 +115,6 @@ class PlaygroundWindow:
         self.c.delete("line")
         searchMe = []
         for o in self.c.find_all():
-            print self.c.coords(o)
             searchMe.append(PhysicalObject(o,np.array(self.c.coords(o)[0:2]),np.array(self.c.coords(o)[0:2]),np.array(self.c.coords(o)[2:4])))
         results = chainfinder.findChains(searchMe,params)
         if len(results)>0:
@@ -214,7 +212,7 @@ class PlaygroundWindow:
     
 root = Tk(className=" Chainfinder Playground ")
 
-PhysicalObject = namedtuple('physicalObject', ['id', 'position', 'bbmin', 'bbmax'])
+
 
 
 

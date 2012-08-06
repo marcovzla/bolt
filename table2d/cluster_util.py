@@ -6,11 +6,17 @@ import math
 
 
 def totuple(a):
-    '''converts whatever nested iterables into tuples'''
+    '''converts nested iterables into tuples'''
     try:
         return tuple(totuple(i) for i in a)
     except TypeError:
         return a
+    
+    
+PhysicalObject = namedtuple('physicalObject', ['id', 'position', 'bbmin', 'bbmax'])  
+ClusterParams = namedtuple("ChainParams",['chain_distance_limit', 'angle_limit', 'min_line_length',
+               'anglevar_weight', 'distvar_weight','dist_weight',
+               'allow_intersection'])
     
     
     

@@ -4,42 +4,12 @@ quick description and documentation in attached readme file.
 @author: colinwinslow
 '''
 import util
+from util import ClusterParams
 import numpy as np
 import heapq
-from collections import namedtuple
-import sceneEval
-import time
-
-
-global ignore_z
-#ignores z axis data
-ignore_z = False
-
-#global distance_limit 
-## sets the allowed range for variance in spacing from one pair of objects in the line to the next.
-## a value of 1 allows objects to range from half as distant to twice as distant, and a value of 2
-## allows them to range from 1/4 as distant to 4 times as distant, etc.
-#distance_limit = 3
-
-
-#global angle_limit 
-##the max angle, in radians, that an object is allowed to deviate from the existing line.
-#angle_limit = .9
 
 
 
-#global anglevar_weight,distvar_weight,dist_weight
-##adjusts the weight of angle and distance variation in the cost function.
-#
-#anglevar_weight = .05     # these two need to be small compared to dist_weight
-#distvar_weight = .1      
-#                       
-#dist_weight=1
-
-#wraps search parameters in a named tuple so they can be passed around easily
-CParams = namedtuple("ChainParams",['distance_limit', 'angle_limit', 'min_line_length',
-               'anglevar_weight', 'distvar_weight','dist_weight',
-               'mode'])
 
 
 def main():
@@ -54,17 +24,13 @@ def main():
 
     
 
-def findChains(inputObjectSet, params = CParams(2,0.9,3,0.05,0.1,1,0)):
+def findChains(inputObjectSet, params = ClusterParams(2,0.9,3,0.05,0.1,1,0)):
     '''finds all the chains, then returns the ones that satisfy constraints, sorted from best to worst.'''
   
     bestlines = []
     explored = set()
-    skipped = 0
-    print inputObjectSet
     pairwise = util.find_pairs(inputObjectSet)
     pairwise.sort(key=lambda p: util.findDistance(p[0].position, p[1].position),reverse=False)
-    skipped = 0
-    timestart = time.time()
     for pair in pairwise:
         start,finish = pair[0],pair[1]
         if frozenset([start.id,finish.id]) not in explored:
@@ -74,8 +40,7 @@ def findChains(inputObjectSet, params = CParams(2,0.9,3,0.05,0.1,1,0)):
                 s = map(frozenset,util.find_pairs(result[0:len(result)-1]))
                 
                 map(explored.add,s)
-        else: skipped += 1
-    print "skipped",skipped
+
                
     verybest = []
     costSum = 0
@@ -84,14 +49,10 @@ def findChains(inputObjectSet, params = CParams(2,0.9,3,0.05,0.1,1,0)):
             verybest.append(line)
     verybest.sort(key=lambda l: len(l),reverse=True)
     costs = map(lambda l: l.pop()+2,verybest)
-    timefinish = time.time()
-    print "chain search time:",timefinish-timestart
-    print "SCENE EVAL"
-    timestart = time.time()
-    evali = sceneEval.bundleSearch(util.totuple(inputObjectSet), zip(costs,verybest),params.allow_intersection)
-    timefinish = time.time()
-    print "full-scene eval time:" ,timefinish-timestart
-    print""
+    
+    #this needs to be moved; sceneEval should call chainfinder, not the other way around.
+    evali = bundleSearch(util.totuple(inputObjectSet), zip(costs,verybest),params.allow_intersection)
+
     return evali
     
             
@@ -147,6 +108,38 @@ def distCost(current,step,start,goal):
     stepdist = util.findDistance(current, step)
     totaldist= util.findDistance(start, goal)
     return stepdist**2/totaldist**2
+
+def bundleSearch(scene, groups, intersection = 0,beamwidth=10):
+    global allow_intersection 
+    allow_intersection = intersection
+    
+    print "number of groups:",len(groups)
+    expanded = 0
+    singletonCost = 1
+    for i in scene:
+        groups.append((singletonCost,[i[0]]))
+        
+    node = BNode(frozenset(), -1, [], 0)
+    frontier = BundlePQ()
+    frontier.push(node, 0)
+    explored = set()
+    while frontier.isEmpty() == False:
+        node = frontier.pop()
+        expanded += 1
+        if node.getState() >= frozenset(map(lambda x:x[0],scene)):
+            path = node.traceback()
+            print "scene evaluation expanded",expanded,"nodes with beam width of ",beamwidth
+            return path
+        explored.add(node.state)
+        successors = node.getSuccessors(scene,groups)
+        successors.sort(key= lambda s: s.gainratio,reverse=True)
+        successors = successors[0:beamwidth]
+        for child in successors:
+            if child.state not in explored and frontier.contains(child.state)==False:
+                frontier.push(child, child.cost)
+            elif frontier.contains(child.state) and frontier.pathCost(child.state) > child.cost:
+                
+                frontier.push(child,child.cost)  
     
 class Node:
     def __init__(self, state, parent, action, cost,qCost):
@@ -183,13 +176,13 @@ class Node:
             for p in points:
                 if self.state.id != p.id: 
                     vCost = distVarCost(self.parent.state.position, self.state.position, p.position)
-#                    print self.parent.state.position,self.state.position,p.position,"--",vCost/params.distance_limit
+#                    print self.parent.state.position,self.state.position,p.position,"--",vCost/params.chain_distance_limit
                     
                     aCost = oldAngleCost(self.parent.state.position,self.state.position,p.position)
                     dCost = distCost(self.state.position,p.position,start.position,finish.position)
 #                    print "dcost",dCost
-                    if aCost <= params.angle_limit and dCost <= 1 and vCost/params.distance_limit <= 1:
-                        normV = params.distvar_weight*(vCost/params.distance_limit)
+                    if aCost <= params.angle_limit and dCost <= 1 and vCost/params.chain_distance_limit <= 1:
+                        normV = params.distvar_weight*(vCost/params.chain_distance_limit)
                         normA = params.anglevar_weight*(aCost/params.angle_limit)
                         qualityCost = (normA+normV)/(params.distvar_weight+params.anglevar_weight)
                         out.append(Node(p,self,p.id,dCost,qualityCost))
@@ -210,7 +203,50 @@ class Node:
 
         return solution
 
+class BNode:
+    def __init__(self, state, parent, action, cost):
+        self.state = state
+        self.parent = parent
+        self.action = action
+        self.cost = cost
+        if parent != -1:
+            self.cost = parent.cost + cost
+        else:
+            self.cost=cost
+        self.gain = len(self.state)-self.cost
 
+        if len(self.state)>0:
+            self.gainratio = self.gain/len(self.state)
+        else: self.gainratio = 0
+
+            
+    def getState(self):
+        return self.state
+    
+    def getSuccessors(self, points,groups):
+        successors = []
+        for g in groups:
+            if len(self.state.intersection(g[1]))<=allow_intersection:
+                asd=BNode(self.state.union(g[1]),self,g,g[0])
+                if asd.gain > 0:
+                    successors.append(asd)
+        return successors
+        
+
+    def traceback(self):
+        solution = []
+        node = self
+        while node.parent != -1:
+            solution.append(node.action[1])
+
+            node = node.parent
+        cardinality = len(solution)-1 #exclude the first node, which has cost 0
+        cost = self.cost#/cardinality
+        solution.reverse()
+        solution.append(cost)
+
+        return solution
+    
 class PriorityQueue:
     '''stolen from ista 450 hw ;)'''
 
@@ -222,6 +258,30 @@ class PriorityQueue:
         pair = (priority, item)
         heapq.heappush(self.heap, pair)
         self.dict[item.state.id]=priority
+    
+    def contains(self,item):
+        return self.dict.has_key(item)
+    
+    def pathCost(self,item):
+        return self.dict.get(item)
+
+    def pop(self):
+        (priority, item) = heapq.heappop(self.heap)
+        return item
+        
+    def isEmpty(self):
+        return len(self.heap) == 0
+    
+class BundlePQ:
+
+    def  __init__(self):  
+        self.heap = []
+        self.dict = dict()
+    
+    def push(self, item, priority):
+        pair = (priority, item)
+        heapq.heappush(self.heap, pair)
+        self.dict[item.state]=priority
     
     def contains(self,item):
         return self.dict.has_key(item)
