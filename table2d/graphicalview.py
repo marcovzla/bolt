@@ -3,7 +3,7 @@ from Tkinter import *
 import SceneEval
 import numpy as np
 import pickle
-from util import ClusterParams,PhysicalObject
+from cluster_util import ClusterParams,PhysicalObject
 import tkFileDialog
 
 
@@ -110,7 +110,7 @@ class PlaygroundWindow:
                          eval(self.anglevar_weight.get()),
                          eval(self.distvar_weight.get()),
                          1,
-                         self.allow_intersection.get()
+                         self.allow_intersection.get(),10
                          
                          )
         self.c.delete("line")

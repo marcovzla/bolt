@@ -3,7 +3,7 @@ Created on Jun 22, 2012
 quick description and documentation in attached readme file. 
 @author: colinwinslow
 '''
-import util
+import cluster_util
 from cluster_util import ClusterParams
 import numpy as np
 import heapq
@@ -39,7 +39,7 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,10)):
     lineCandidates = findChains(inputObjectSet,params)
     print'***'
     allCandidates = clusterCandidates + lineCandidates
-    evali = bundleSearch(util.totuple(inputObjectSet), allCandidates, params.allow_intersection, 10)
+    evali = bundleSearch(cluster_util.totuple(inputObjectSet), allCandidates, params.allow_intersection, 10)
     print evali
     return evali
     
@@ -49,15 +49,15 @@ def findChains(inputObjectSet, params ):
   
     bestlines = []
     explored = set()
-    pairwise = util.find_pairs(inputObjectSet)
-    pairwise.sort(key=lambda p: util.findDistance(p[0].position, p[1].position),reverse=False)
+    pairwise = cluster_util.find_pairs(inputObjectSet)
+    pairwise.sort(key=lambda p: cluster_util.findDistance(p[0].position, p[1].position),reverse=False)
     for pair in pairwise:
         start,finish = pair[0],pair[1]
         if frozenset([start.id,finish.id]) not in explored:
             result = chainSearch(start, finish, inputObjectSet,params)
             if result != None: 
                 bestlines.append(result)
-                s = map(frozenset,util.find_pairs(result[0:len(result)-1]))
+                s = map(frozenset,cluster_util.find_pairs(result[0:len(result)-1]))
                 
                 map(explored.add,s)
 
@@ -100,7 +100,7 @@ def oldAngleCost(a, b, c):
     '''angle cost of going to c given we came from ab'''
     abDir = b - a
     bcDir = c - b
-    difference = util.findAngle(abDir, bcDir)
+    difference = cluster_util.findAngle(abDir, bcDir)
     if np.isnan(difference): return 0
     else: return np.abs(difference)
     
@@ -108,15 +108,15 @@ def angleCost(a, b, c, d):
     '''prefers straighter lines'''
     abDir = b - a
     cdDir = d - c
-    difference = util.findAngle(abDir, cdDir)
+    difference = cluster_util.findAngle(abDir, cdDir)
     if np.isnan(difference): return 0
     else: return np.abs(difference)
     
 def distVarCost(a, b, c):
     #np.seterr(all='warn')
     '''prefers lines with less variance in their spacing'''
-    abDist = util.findDistance(a, b)
-    bcDist = util.findDistance(b, c)
+    abDist = cluster_util.findDistance(a, b)
+    bcDist = cluster_util.findDistance(b, c)
     if bcDist==0:
         #shouldn't ever occur, but prevents undefined data while debugging
         return 0
@@ -124,8 +124,8 @@ def distVarCost(a, b, c):
 
 def distCost(current,step,start,goal):
     '''prefers dense lines to sparse ones'''
-    stepdist = util.findDistance(current, step)
-    totaldist= util.findDistance(start, goal)
+    stepdist = cluster_util.findDistance(current, step)
+    totaldist= cluster_util.findDistance(start, goal)
     return stepdist**2/totaldist**2
 
 def bundleSearch(scene, groups, intersection = 0,beamwidth=10):

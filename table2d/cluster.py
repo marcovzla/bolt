@@ -14,7 +14,6 @@ from sklearn.datasets.samples_generator import make_blobs
 
 
 def clustercost(data):
-    print 'hello.'
     #    data is a tuple of two dictionaries: core cluster data first, then fringe data second\
     # this func needs to return a unified list of possible clusters using both dictionaries in the style of the chain finder function
     # quick and dirty:
