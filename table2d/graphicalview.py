@@ -1,6 +1,6 @@
 from Tkinter import *
 
-import chainfinder
+import SceneEval
 import numpy as np
 import pickle
 from util import ClusterParams,PhysicalObject
@@ -116,7 +116,7 @@ class PlaygroundWindow:
         searchMe = []
         for o in self.c.find_all():
             searchMe.append(PhysicalObject(o,np.array(self.c.coords(o)[0:2]),np.array(self.c.coords(o)[0:2]),np.array(self.c.coords(o)[2:4])))
-        results = chainfinder.findChains(searchMe,params)
+        results = SceneEval.sceneEval(searchMe,params)
         if len(results)>0:
             self.chainViz(results)
             

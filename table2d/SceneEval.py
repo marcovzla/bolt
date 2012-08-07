@@ -4,9 +4,10 @@ quick description and documentation in attached readme file.
 @author: colinwinslow
 '''
 import util
-from util import ClusterParams
+from cluster_util import ClusterParams
 import numpy as np
 import heapq
+from cluster import dbscan,clustercost
 
 
 
@@ -24,7 +25,24 @@ def main():
 
     
 
-def findChains(inputObjectSet, params = ClusterParams(2,0.9,3,0.05,0.1,1,0)):
+def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,10)):
+    
+    '''
+    find the clusters
+    evaulate the inside of the clusters as lines to see if they'd be better as lines than clusters
+    evaluate the outside of clusters for lines
+    concatenate the lists of clusters and lines
+    evaluate the whole thing with bundle search
+    '''
+    
+    clusterCandidates = clustercost(dbscan(np.array(map(lambda x: (x.position,x.id),inputObjectSet))))
+    lineCandidates = findChains(inputObjectSet,params)
+    print type(clusterCandidates)
+    allCandidates = clusterCandidates + lineCandidates
+    evali = bundleSearch(util.totuple(inputObjectSet), zip(costs,verybest),params.allow_intersection)
+    
+
+def findChains(inputObjectSet, params = ClusterParams(2,0.9,3,0.05,0.1,1,0,10)):
     '''finds all the chains, then returns the ones that satisfy constraints, sorted from best to worst.'''
   
     bestlines = []
@@ -49,11 +67,9 @@ def findChains(inputObjectSet, params = ClusterParams(2,0.9,3,0.05,0.1,1,0)):
             verybest.append(line)
     verybest.sort(key=lambda l: len(l),reverse=True)
     costs = map(lambda l: l.pop()+2,verybest)
-    
-    #this needs to be moved; sceneEval should call chainfinder, not the other way around.
-    evali = bundleSearch(util.totuple(inputObjectSet), zip(costs,verybest),params.allow_intersection)
+    data = np.array(map(lambda x: (x.position,x.id),inputObjectSet))
 
-    return evali
+    return zip(costs,verybest)
     
             
 def chainSearch(start, finish, points,params):

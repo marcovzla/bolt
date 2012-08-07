@@ -13,69 +13,39 @@ from sklearn import metrics
 from sklearn.datasets.samples_generator import make_blobs
 
 
-
+def clustercost(data):
+    print 'hello.'
+    #    data is a tuple of two dictionaries: core cluster data first, then fringe data second\
+    # this func needs to return a unified list of possible clusters using both dictionaries in the style of the chain finder function
+    
 def dbscan(data):
-    print data
-    ##############################################################################
-    # Generate sample data
-    centers = [[1, 1], [-1, -1], [1, -1]]
-    X, labels_true = make_blobs(n_samples=750, centers=centers, cluster_std=0.4)
-    
-    
-    ##############################################################################
-    # Compute similarities
+    X,ids = zip(*data)
     D = distance.squareform(distance.pdist(X))
     S = 1 - (D / np.max(D))
-    
-    ##############################################################################
-    # Compute DBSCAN
-    db = DBSCAN(eps=0.95, min_samples=10).fit(S)
+    db = DBSCAN(min_samples=4).fit(S)
     core_samples = db.core_sample_indices_
     labels = db.labels_
+    clusterlist = zip(labels, ids)
+    shortclusterlist = zip(labels,ids)
     
-    # Number of clusters in labels, ignoring noise if present.
-    n_clusters_ = len(set(labels)) - (1 if -1 in labels else 0)
+    fringedict = dict()
+    coredict = dict()
     
-    print 'Estimated number of clusters: %d' % n_clusters_
-    print "Homogeneity: %0.3f" % metrics.homogeneity_score(labels_true, labels)
-    print "Completeness: %0.3f" % metrics.completeness_score(labels_true, labels)
-    print "V-measure: %0.3f" % metrics.v_measure_score(labels_true, labels)
-    print "Adjusted Rand Index: %0.3f" % \
-        metrics.adjusted_rand_score(labels_true, labels)
-    print "Adjusted Mutual Information: %0.3f" % \
-        metrics.adjusted_mutual_info_score(labels_true, labels)
-    print ("Silhouette Coefficient: %0.3f" %
-           metrics.silhouette_score(D, labels, metric='precomputed'))
+    for i in core_samples:
+        ikey = int(clusterlist[i][0])
+        ival = clusterlist[i][1]
+        try:
+            coredict[ikey].append(ival)
+        except:
+            coredict[ikey]=[]
+            coredict[ikey].append(ival)
+        shortclusterlist.remove(clusterlist[i])
     
-    ##############################################################################
-    # Plot result
-    import pylab as pl
-    from itertools import cycle
+    for i in shortclusterlist:
+        try:
+            fringedict[int(i[0])].append(i[1])
+        except:
+            fringedict[int(i[0])]=[]
+            fringedict[int(i[0])].append(i[1])
     
-    pl.close('all')
-    pl.figure(1)
-    pl.clf()
-    
-    # Black removed and is used for noise instead.
-    colors = cycle('bgrcmybgrcmybgrcmybgrcmy')
-    for k, col in zip(set(labels), colors):
-        if k == -1:
-            # Black used for noise.
-            col = 'k'
-            markersize = 6
-        class_members = [index[0] for index in np.argwhere(labels == k)]
-        cluster_core_samples = [index for index in core_samples
-                                if labels[index] == k]
-        for index in class_members:
-            x = X[index]
-            if index in core_samples and k != -1:
-                markersize = 14
-            else:
-                markersize = 6
-            pl.plot(x[0], x[1], 'o', markerfacecolor=col,
-                    markeredgecolor='k', markersize=markersize)
-    
-    pl.title('Estimated number of clusters: %d' % n_clusters_)
-    pl.show()
-    
-dbscan(1)
+    return (coredict,fringedict)
