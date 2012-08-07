@@ -37,12 +37,14 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,10)):
     
     clusterCandidates = clustercost(dbscan(np.array(map(lambda x: (x.position,x.id),inputObjectSet))))
     lineCandidates = findChains(inputObjectSet,params)
-    print type(clusterCandidates)
+    print'***'
     allCandidates = clusterCandidates + lineCandidates
-    evali = bundleSearch(util.totuple(inputObjectSet), zip(costs,verybest),params.allow_intersection)
+    evali = bundleSearch(util.totuple(inputObjectSet), allCandidates, params.allow_intersection, 10)
+    print evali
+    return evali
     
 
-def findChains(inputObjectSet, params = ClusterParams(2,0.9,3,0.05,0.1,1,0,10)):
+def findChains(inputObjectSet, params ):
     '''finds all the chains, then returns the ones that satisfy constraints, sorted from best to worst.'''
   
     bestlines = []
@@ -67,9 +69,10 @@ def findChains(inputObjectSet, params = ClusterParams(2,0.9,3,0.05,0.1,1,0,10)):
             verybest.append(line)
     verybest.sort(key=lambda l: len(l),reverse=True)
     costs = map(lambda l: l.pop()+2,verybest)
+    listOfTheWordLine = ["line"]*len(costs)
     data = np.array(map(lambda x: (x.position,x.id),inputObjectSet))
 
-    return zip(costs,verybest)
+    return zip(costs,verybest,listOfTheWordLine)
     
             
 def chainSearch(start, finish, points,params):
