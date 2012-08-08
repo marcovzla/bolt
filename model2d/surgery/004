@@ -1,0 +1,5 @@
+% close may be tagged as a verb
+LOCATION-PHRASE < (VP=vp < VB=vb)
+
+excise vp vp
+relabel vb RB

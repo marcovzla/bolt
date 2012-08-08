@@ -1,0 +1,5 @@
+% move every not into its ADJP right sibling
+RB=rb [ < not & $+ ADJP=adjp ]
+
+move rb >1 adjp
+relabel rb NOT

@@ -1,0 +1,5 @@
+LOCATION-PHRASE < (ADVP=advp1 [ <1 ADVP=advp2 & <2 PP=pp ] )
+
+excise advp1 advp1
+move advp2 >1 pp
+excise advp2 advp2

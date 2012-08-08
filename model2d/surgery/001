@@ -1,0 +1,5 @@
+% the root node for a sentence parsed with the brown parser is S1
+% we want it to be LOCATION-PHRASE in our modified tree
+S1=loc
+
+relabel loc LOCATION-PHRASE

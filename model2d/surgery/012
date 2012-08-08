@@ -1,0 +1,6 @@
+% fix for "to the left of"
+LOCATION-PHRASE < (PP [ <-2 TO & <-1 (NP=np1 [ < (NP=np2 < (NN < /left|right/)) & < PP=pp]) ])
+
+excise pp pp
+excise np2 np2
+excise np1 np1

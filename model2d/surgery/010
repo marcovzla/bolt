@@ -1,0 +1,3 @@
+LOCATION-PHRASE < (PP [ <1 (IN < near) & <2 PP=pp])
+
+excise pp pp
