@@ -21,7 +21,7 @@ class Speaker(object):
         head_on = axis.project(self.location)
         return head_on
 
-    def describe(self, poi, scene, visualize=False, max_level=-1):
+    def describe(self, poi, scene, visualize=False, max_level=-1, delimit_chunks=False):
         scenes = scene.get_child_scenes(poi) + [scene]
 
         all_landmarks = []
@@ -55,12 +55,12 @@ class Speaker(object):
         # print 'distance',sampled_landmark.distance_to(poi)
         # print 'probability', sampled_relation.probability(poi,sampled_landmark)
 
-        description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation)
+        description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
         if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, sampled_relation, description, 0.1)
 
-    def communicate(self, scene, visualize=False, max_level=-1):
+    def communicate(self, scene, visualize=False, max_level=-1, delimit_chunks=False):
         all_landmarks = []
         all_relations = []
 
@@ -84,7 +84,7 @@ class Speaker(object):
         poi = self.sample_poi(scene.landmarks['table'].representation.get_geometry().bounding_box, sampled_relation, perspective, sampled_landmark)
 
         sampled_relation = sampled_relation(perspective, sampled_landmark, poi)
-        description = str(poi) + '; ' + language_generator.describe(perspective, sampled_landmark, sampled_relation)
+        description = str(poi) + '; ' + language_generator.describe(perspective, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
         if visualize: self.visualize(scene, poi, perspective, sampled_landmark, sampled_relation, description, 0.1)
