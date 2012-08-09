@@ -19,6 +19,8 @@ class PlaygroundWindow:
         self.pathfinding_active = 1
         self.allow_intersection = IntVar()
         self.allow_intersection.set(0)
+        self.attempt_dnc = IntVar()
+        self.attempt_dnc.set(0)
         #algorithm parameters
 
         
@@ -36,12 +38,16 @@ class PlaygroundWindow:
         self.distvar_weight.set(".1")
         self.dist_weight=StringVar()
         self.dist_weight.set("depricated")
+        self.beam_width = StringVar()
+        self.beam_width.set("10")
 
         
-        sceneFrame = Frame(frame,relief=SUNKEN,borderwidth=2,width=2,)
+        sceneFrame = Frame(varFrame,relief=SUNKEN,borderwidth=2,width=2,)
         self.intersect_checkbox = Checkbutton(sceneFrame,text="Allow Intersecting Lines",variable = self.allow_intersection).pack()
+        self.dnc_checkbox = Checkbutton(sceneFrame,text="Attempt to Divide & Conquer",variable = self.attempt_dnc).pack()
         
-        
+        length_limit_label = Label(sceneFrame, text="Beam Width:", anchor=W).pack()
+        self.beam_width_field = Entry(sceneFrame, width=5,textvariable=self.beam_width).pack()
         
         distvar_limit_label = Label(varFrame, text="Distance Limit:", anchor=W).pack()
         self.distvar_limit_field = Entry(varFrame, width=5,textvariable=self.distance_limit).pack()
@@ -73,7 +79,7 @@ class PlaygroundWindow:
         self.c.pack()
 
         varFrame.pack(side=LEFT,padx=2, pady=2)
-        sceneFrame.pack(side=BOTTOM,padx=2, pady=2)
+        sceneFrame.pack(side=RIGHT,padx=2, pady=2)
         self.c.bind("<Button-1>", self.mousedown)
         self.c.bind("<B1-Motion>", self.mousedrag)
 #        self.c.bind("<ButtonRelease-1>", self.mouseup)
@@ -110,7 +116,9 @@ class PlaygroundWindow:
                          eval(self.anglevar_weight.get()),
                          eval(self.distvar_weight.get()),
                          1,
-                         self.allow_intersection.get(),10
+                         self.allow_intersection.get(),
+                         eval(self.beam_width.get()),
+                        self.attempt_dnc.get()
                          
                          )
         self.c.delete("line")

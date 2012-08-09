@@ -8,7 +8,7 @@ from cluster_util import ClusterParams
 import numpy as np
 import heapq
 from cluster import dbscan,clustercost
-
+from copy import copy
 
 
 
@@ -25,7 +25,7 @@ def main():
 
     
 
-def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,10)):
+def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,11,False)):
     
     '''
     find the clusters
@@ -34,12 +34,35 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,10)):
     concatenate the lists of clusters and lines
     evaluate the whole thing with bundle search
     '''
+    reducedObjectSet = copy(inputObjectSet)
     
     clusterCandidates = clustercost(dbscan(np.array(map(lambda x: (x.position,x.id),inputObjectSet))))
-    lineCandidates = findChains(inputObjectSet,params)
-    print'***'
-    allCandidates = clusterCandidates + lineCandidates
-    evali = bundleSearch(cluster_util.totuple(inputObjectSet), allCandidates, params.allow_intersection, 10)
+    
+    innerLines = []
+    #search for lines inside large clusters
+    if params.attempt_dnc==True:
+        for cluster in clusterCandidates[1]:
+
+            innerObjects = []
+            for id in cluster[1]:
+                for x in inputObjectSet:
+                    if x.id == id:
+                        innerObjects.append(x)
+            innerChains = findChains(innerObjects,params)
+            for thing in innerChains:
+                innerLines.append(thing)
+            
+        #remove core clusters
+        for cluster in clusterCandidates[0]:
+            for id in cluster[1]:
+                for x in reducedObjectSet:
+                    if x.id == id:
+                        reducedObjectSet.remove(x)
+
+    lineCandidates = findChains(reducedObjectSet,params)
+    
+    allCandidates = clusterCandidates[0]+clusterCandidates[1] + lineCandidates +innerLines
+    evali = bundleSearch(cluster_util.totuple(inputObjectSet), allCandidates, params.allow_intersection, params.beam_width)
     print evali
     return evali
     
