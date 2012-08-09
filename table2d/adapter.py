@@ -1,7 +1,7 @@
 from planar import Vec2, BoundingBox
 from collections import namedtuple
 import numpy as np
-import chainfinder
+import SceneEval
 
 
 
@@ -15,7 +15,7 @@ def adapt(scene):
                         np.array(scene.landmarks[l].representation.rect.min_point),
                         np.array(scene.landmarks[l].representation.rect.max_point))
         objects.append(o)
-    results = chainfinder.findChains(objects)[0:-1]#trim the score from the end of the list
+    results = SceneEval.findChains(objects)[0:-1]#trim the score from the end of the list
     for r in range(len(results)):
         for s in range(len(results[r])):
             results[r][s] = scene.fetch_landmark(results[r][s])

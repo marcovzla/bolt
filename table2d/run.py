@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from speaker import Speaker
 from planar import Vec2, BoundingBox
-from landmark import ObjectLineRepresentation, RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
+from landmark import GroupLineRepresentation, RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
 from random import random
 import pickle
 import adapter

@@ -2,7 +2,7 @@ from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRel
 from numpy import array, arange, zeros, log, argmin, set_printoptions, random
 from random import choice
 from matplotlib import pyplot as plt
-from landmark import PointRepresentation, LineRepresentation, ObjectLineRepresentation, RectangleRepresentation
+from landmark import PointRepresentation, LineRepresentation, GroupLineRepresentation, RectangleRepresentation
 from planar import Vec2
 import sys
 from textwrap import wrap
@@ -17,9 +17,12 @@ class Speaker(object):
 
     def get_head_on_viewpoint(self, landmark):
         axes = landmark.get_primary_axes()
-        axis = axes[ argmin([axis.distance_to(self.location) for axis in axes]) ]
-        head_on = axis.project(self.location)
-        return head_on
+        if len(axes) > 0:
+            axis = axes[ argmin([axis.distance_to(self.location) for axis in axes]) ]
+            return axis.project(self.location)
+        else:
+            print "Not getting head on viewpoint!!!"
+            return self.location
 
     def describe(self, poi, scene, visualize=False, max_level=-1, delimit_chunks=False):
         scenes = scene.get_child_scenes(poi) + [scene]
@@ -305,7 +308,7 @@ class Speaker(object):
         plt.colorbar()
 
         for lmk in scene.landmarks.values():
-            if isinstance(lmk.representation, ObjectLineRepresentation):
+            if isinstance(lmk.representation, GroupLineRepresentation):
                 xs = [lmk.representation.line.start.x, lmk.representation.line.end.x]
                 ys = [lmk.representation.line.start.y, lmk.representation.line.end.y]
                 plt.fill(xs,ys,facecolor='none',linewidth=2)

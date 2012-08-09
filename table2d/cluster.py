@@ -3,7 +3,6 @@ Created on Jul 5, 2012
 
 @author: colinwinslow
 '''
-print __doc__
 
 import numpy as np
 
@@ -20,7 +19,7 @@ def clustercost(data):
 
     smallClusters = []
     bigClusters = []
-    
+
     #cores
     for i in data[0].viewvalues():
         corecluster=(len(i)*.7,i,'small_group')
@@ -28,13 +27,13 @@ def clustercost(data):
     for i in data[1].viewvalues():
         bigcluster = (len(i)*.95,i,'big_group')
         bigClusters.append(bigcluster)
-        
+
     return (smallClusters,bigClusters)
-    
+
     #cores+fringes
 
 
-    
+
 def dbscan(data):
     X,ids = zip(*data)
     D = distance.squareform(distance.pdist(X))
@@ -44,10 +43,10 @@ def dbscan(data):
     labels = db.labels_
     clusterlist = zip(labels, ids)
     shortclusterlist = zip(labels,ids)
-    
+
     fringedict = dict()
     coredict = dict()
-    
+
     for i in core_samples:
         ikey = int(clusterlist[i][0])
         ival = clusterlist[i][1]
@@ -60,12 +59,12 @@ def dbscan(data):
             coredict[ikey].append(ival)
             fringedict[ikey].append(ival)
         shortclusterlist.remove(clusterlist[i])
-    
+
     for i in shortclusterlist:
         try:
             fringedict[int(i[0])].append(i[1])
         except:
             fringedict[int(i[0])]=[]
             fringedict[int(i[0])].append(i[1])
-    
+
     return (coredict,fringedict)
