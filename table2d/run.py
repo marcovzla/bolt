@@ -4,7 +4,7 @@ from planar import Vec2, BoundingBox
 from landmark import ObjectLineRepresentation, RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
 from random import random
 import pickle
-from line_finder import adapter
+import adapter
 
 if __name__ == '__main__':
     # poi = Vec2(float(sys.argv[1]), 0)
@@ -65,7 +65,7 @@ if __name__ == '__main__':
     #speaker.talk_to_baby(scene, perspectives, how_many_each=10)
 
 
-    dozen = 1000
+    dozen = 12
     couple = 1
     for i in range(couple * dozen):
         location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
