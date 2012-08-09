@@ -226,6 +226,16 @@ class Speaker(object):
         poi_prob = rel.is_applicable()
         return poi_prob / (probs.sum() + poi_prob)
 
+    def sample_landmark(self, landmarks, poi):
+        epsilon = 0.000001
+        distances = array([lmk.middle.distance_to(poi) for lmk in landmarks])
+        scores = 1.0/(array(distances)**1.5 + epsilon)
+        scores[distances == 0] = 0
+        lm_probabilities = scores/sum(scores)
+        index = lm_probabilities.cumsum().searchsorted( random.sample(1) )[0]
+
+        return landmarks[index], lm_probabilities[index], self.get_entropy(lm_probabilities)
+
     def sample_relation(self, poi, bounding_box, perspective, landmark, step=0.02):
         """
         Sample a relation given a point of interest and landmark.
@@ -244,7 +254,7 @@ class Speaker(object):
         rel_probabilities = rel_scores/sum(rel_scores)
         index = rel_probabilities.cumsum().searchsorted( random.sample(1) )[0]
 
-        return rel_classes[index]
+        return rel_classes[index], rel_probabilities[index], self.get_entropy(rel_probabilities)
 
     def sample_poi(self, bounding_box, relation, perspective, landmark, step=0.02):
         """
@@ -258,7 +268,7 @@ class Speaker(object):
     def get_entropy(self, probabilities):
         probabilities += 1e-15
         probabilities = probabilities/sum(probabilities.flatten())
-        return sum( (probabilities * log( 1./probabilities)).flatten() )
+        return -sum( (probabilities * log(probabilities)).flatten() )
 
     def visualize(self, scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.02):
 

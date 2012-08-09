@@ -12,6 +12,7 @@ from planar import Vec2, BoundingBox
 
 # import stuff from table2d
 sys.path.append('..')
+from table2d.speaker import Speaker
 from table2d.landmark import RectangleRepresentation, Scene, Landmark
 from table2d.relation import (DistanceRelationSet,
                               ContainmentRelationSet,
@@ -35,17 +36,6 @@ def count_lmk_phrases(t):
 
 
 
-# FIXME this is a copy of `Speaker.get_head_on_viewpoint`
-# ideally, i should be able to access it directly from `Speaker`
-def get_head_on_viewpoint(landmark, reference):
-    axes = landmark.get_primary_axes()
-    idx = np.argmin([axis.distance_to(reference) for axis in axes])
-    axis = axes[idx]
-    head_on = axis.project(reference)
-    return head_on
-
-
-
 # a wrapper for a table2d scene
 class ModelScene(object):
     def __init__(self):
@@ -62,7 +52,7 @@ class ModelScene(object):
 
         # there is a person standing at this location
         # he will be our reference
-        self.speaker = Vec2(5.5, 4.5)
+        self.speaker = Speaker(Vec2(5.5, 4.5))
 
         # NOTE we need to keep around the list of landmarks so that we can
         # access them by id, which is the index of the landmark in this list
@@ -74,7 +64,7 @@ class ModelScene(object):
         self.landmarks = []
         for scene_lmk in self.scene.landmarks.itervalues():
             self.landmarks.append(scene_lmk)
-            
+
             # a scene can be represented as a plane, line, etc
             # each representation of a scene has different landmarks
             rs = [scene_lmk.representation]
@@ -109,31 +99,11 @@ class ModelScene(object):
         if num_ancestors is not None:
             landmarks = [l for l in landmarks if l.get_ancestor_count() == num_ancestors]
 
-        # these are the different kinds of relationships we support
-        RelSets = [DistanceRelationSet, ContainmentRelationSet, OrientationRelationSet]
+        lmk, lmk_prob, lmk_entropy = self.speaker.sample_landmark(landmarks, loc)
+        head_on = self.speaker.get_head_on_viewpoint(lmk)
+        rel, rel_prob, rel_entropy = self.speaker.sample_relation(loc, self.table.representation.get_geometry(), head_on, lmk)
 
-        while True:
-            # what kind of relationship do we want?
-            RelSet = random.choice(RelSets)
-            relset = RelSet()
-
-            try:
-                # sample everything
-                index = relset.sample_landmark(landmarks, loc)
-                sampled_lmk = landmarks[index]
-                head_on = get_head_on_viewpoint(sampled_lmk, self.speaker)
-                sampled_rel = relset.sample_relation(head_on, sampled_lmk, loc)
-                return sampled_lmk, sampled_rel
-            except:
-                # if we restrict the list of landmarks by the number of ancestors
-                # we may get a list with landmarks that the sampled RelSet does not like
-                # so we remove that RelSet from the RelSets list and try again
-                for RelSet in RelSets:
-                    if isinstance(relset, RelSet):
-                        break
-                RelSets.pop(RelSets.index(RelSet))
-                continue
-
+        return lmk, rel
 
 
 # we will use this instance of the scene
@@ -165,9 +135,10 @@ def m2s(lmk, rel):
 
 
 def categorical_sample(values, probs):
+    probs = np.array(probs)
     index = np.random.multinomial(1, probs).nonzero()[0][0]
     value = values[index]
-    return value
+    return value, probs[index], -np.sum( (probs * np.log(probs))
 
 
 

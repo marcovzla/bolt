@@ -11,6 +11,8 @@ from utils import (get_meaning, categorical_sample, parent_landmark,
 from models import Word, Production
 
 from location_from_sentence import get_sentence_posteriors
+import collections
+import numpy as np
 
 NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
 
@@ -19,31 +21,48 @@ NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
 def get_expansion(lhs, parent=None, lmk=None, rel=None):
     p_db = Production.get_productions(lhs=lhs, parent=parent,
                                       lmk=lmk_id(lmk), rel=rel_type(rel))
-    num_prod = p_db.count()
-    production = categorical_sample(p_db, [1/num_prod] * num_prod)
-    print 'expanding:', production
-    return production.rhs
+
+    counter = collections.Counter(p_db)
+    keys, counts = zip(*counter.items())
+    counts = np.array(counts)
+    counts /= counts.sum()
+
+    prod, prod_prob, prod_entropy = categorical_sample(keys, counts)
+    print 'expanding:', prod, prod_prob, prod_entropy
+    return prod.rhs, prod_prob, prod_entropy
 
 
 
 def get_words(expn, parent, lmk=None, rel=None):
     words = []
+    probs = []
+    entropy = []
+
     for n in expn.split():
         if n in NONTERMINALS:
             if n == parent == 'LANDMARK-PHRASE':
                 # we need to move to the parent landmark
                 lmk = parent_landmark(lmk)
             # we need to keep expanding
-            expansion = get_expansion(n, parent, lmk, rel)
-            words += get_words(expansion, n, lmk, rel)
+            expansion, exp_prob, exp_ent = get_expansion(n, parent, lmk, rel)
+            w, w_prob, w_ent = get_words(expansion, n, lmk, rel)
+            words.append(w)
+            probs.append(exp_prob * w_prob)
+            entropy.append(exp_ent + w_ent)
         else:
             # get word for POS
             w_db = Word.get_words(pos=n, lmk=lmk_id(lmk), rel=rel_type(rel))
-            num_w = w_db.count()
-            w = categorical_sample(w_db, [1/num_w] * num_w)
+            counter = collections.Counter(w_db)
+            keys, counts = zip(*counter.items())
+            counts = np.array(counts)
+            counts /= counts.sum()
+            w, w_prob, w_entropy = categorical_sample(keys, counts)
             words.append(w.word)
-    print 'expanding %s to %s' % (expn, words)
-    return words
+            probs.append(w.prob)
+            entropy.append(w_entropy)
+    p, H = np.prod(probs), np.sum(entropy)
+    print 'expanding %s to %s (p: %f, H: %f)' % (expn, words, p, H)
+    return words, p, H
 
 
 
@@ -51,10 +70,10 @@ def generate_sentence(loc, consistent):
     while True:
         lmk, rel = get_meaning(loc=loc)
         print m2s(lmk, rel)
-        rel_exp = get_expansion('RELATION', rel=rel)
-        lmk_exp = get_expansion('LANDMARK-PHRASE', lmk=lmk)
-        rel_words = get_words(rel_exp, 'RELATION', rel=rel)
-        lmk_words = get_words(lmk_exp, 'LANDMARK-PHRASE', lmk=lmk)
+        rel_exp, rel_prob, rel_ent = get_expansion('RELATION', rel=rel)
+        lmk_exp, lmk_prob, lmk_ent = get_expansion('LANDMARK-PHRASE', lmk=lmk)
+        rel_words, relw_prob, relw_ent = get_words(rel_exp, 'RELATION', rel=rel)
+        lmk_words, lmkw_prob, lmkw_ent = get_words(lmk_exp, 'LANDMARK-PHRASE', lmk=lmk)
         sentence = ' '.join(rel_words + lmk_words)
 
         if consistent:
