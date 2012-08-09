@@ -12,6 +12,24 @@ from math import sqrt
 import numpy as np
 import matplotlib.pyplot as plt
 
+# Let's pretend we're importing this from planar
+class Circle(object):
+    def __init__(self, center, radius):
+        self.center = center
+        self.radius = radius
+        rad_point = Vec2(radius,radius)
+        self.bounding_box = BoundingBox([self.center - rad_point, self.center + rad_point])
+
+    def distance_to_edge(self, point):
+        return self.center.distance_to(point) - self.radius
+
+    def distance_to(self, point):
+        distance = self.distance_to_edge(point)
+        return distance if distance >= 0 else 0
+
+    def contains_point(self, point):
+        return True if self.distance_to_edge(point) < 0 else False
+
 
 def ccw(A,B,C):
     ccw = (C.y-A.y)*(B.x-A.x) > (B.y-A.y)*(C.x-A.x)
@@ -286,6 +304,46 @@ class LineRepresentation(AbstractRepresentation):
     def get_primary_axes(self):
         return [self.line.line, self.line.line.perpendicular(self.line.mid)]
 
+class CircleRepresentation(AbstractRepresentation):
+    def __init__(self, circ, alt_of=None):
+        self.circ = circ
+        self.num_dim = 2
+        self.middle = circ.center
+        self.landmarks = {
+            'middle': Landmark('middle', PointRepresentation(self.middle), self, Landmark.MIDDLE)
+        }
+
+    def my_project_point(self, point):
+        return point
+
+    def distance_to(self, thing):
+        if isinstance(thing,Vec2):
+            return self.circ.distance_to(thing)
+        elif isinstance(thing,LineSegment):
+            distance = thing.distance_to(self.circ.center) - self.circ.radius
+        elif isinstance(thing,BoundingBox):
+            distance = poly_to_vec_distance(thing.to_polygon(), self.circ.center) - self.circ.radius
+        elif isinstance(thing,Polygon):
+            distance = poly_to_vec_distance(thing, self.circ.center) - self.circ.radius
+        elif isinstance(thing,Circle):
+            self.circ.distance_to(thing.center) - thing.radius
+        return distance if distance > 0 else 0
+
+    def contains(self, other):
+        if other.num_dim > self.num_dim: return False
+        if other.num_dim == 0:
+            return self.circ.contains_point(other.location)
+        if other.num_dim == 1:
+            return self.circ.contains_point(other.line.start) and self.circ.contains_point(other.line.end)
+        if other.num_dim == 2:
+            if isinstance(other,Circle):
+                return True if self.circ.center.distance_to(other.circ.center) + other.circ.radius < self.circ.radius else False
+            for p in other.get_points():
+                if not self.circ.contains_point(p): return False
+            return True
+
+    def get_geometry(self):
+        return self.circ
 
 class RectangleRepresentation(AbstractRepresentation):
     def __init__(self, rect=BoundingBox([Vec2(0, 0), Vec2(1, 2)]),
