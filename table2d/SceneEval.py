@@ -60,7 +60,6 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,11,Fals
                         reducedObjectSet.remove(x)
 
     lineCandidates = findChains(reducedObjectSet,params)
-    
     allCandidates = clusterCandidates[0]+clusterCandidates[1] + lineCandidates +innerLines
     evali = bundleSearch(cluster_util.totuple(inputObjectSet), allCandidates, params.allow_intersection, params.beam_width)
     print evali

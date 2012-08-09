@@ -17,6 +17,7 @@ PhysicalObject = namedtuple('physicalObject', ['id', 'position', 'bbmin', 'bbmax
 ClusterParams = namedtuple("ClusterParams",['chain_distance_limit', 'angle_limit', 'min_line_length',
                'anglevar_weight', 'distvar_weight','dist_weight',
                'allow_intersection','beam_width','attempt_dnc'])
+GroupAttributes = namedtuple('groupAttributes',['cost','type','density'])
     
     
     
