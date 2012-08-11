@@ -231,6 +231,8 @@ class WordCPT(Base):
     id = Column(Integer, primary_key=True)
 
     word = Column(String, nullable=False)
+    all_count = Column(Float)
+    count = Column(Float)
     prob = Column(Float)
 
     # conditioned on
@@ -255,7 +257,9 @@ class WordCPT(Base):
         q = Word.get_words(**given)
         const = q.count()  # normalizing constant
         if const:
-            wp.prob = q.filter(Word.word==word).count() / const
+            wp.all_count = const
+            wp.count = q.filter(Word.word==word).count()
+            wp.prob = wp.count / const
         return wp
 
     @classmethod
@@ -272,12 +276,25 @@ class WordCPT(Base):
         except:
             wp = cls.calc_prob(word=word, **given)
             session.commit()
-        return wp.prob
+        return wp.count / wp.all_count
+
+    @classmethod
+    def update(cls, word, update_by, **given):
+        try:
+            wp = cls.get_prob(word=word, **given)
+        except:
+            wp = cls.calc_prob(word=word, **given)
+        wp.all_count = wp.all_count + update_by
+        wp.count = wp.count + update_by
+        session.commit()
+        return 
 
 class ExpansionCPT(Base):
     id = Column(Integer, primary_key=True)
 
     rhs = Column(String, nullable=False)
+    all_count = Column(Float)
+    count = Column(Float)
     prob = Column(Float)
 
     # conditioned on
@@ -303,7 +320,9 @@ class ExpansionCPT(Base):
         q = Production.get_productions(**given)
         const = q.count()  # normalizing constant
         if const:
-            ep.prob = q.filter_by(rhs=rhs).count() / const
+            ep.all_count = const
+            ep.count = q.filter_by(rhs=rhs).count() 
+            ep.prob = ep.count / const
         return ep
 
     @classmethod
@@ -320,7 +339,18 @@ class ExpansionCPT(Base):
         except:
             ep = cls.calc_prob(rhs=rhs, **given)
             session.commit()
-        return ep.prob
+        return ep.count / ep.all_count
+
+    @classmethod
+    def update(cls, rhs, update_by, **given):
+        try:
+            ep = cls.get_prob(rhs=rhs, **given)
+        except:
+            ep = cls.calc_prob(rhs=rhs, **given)
+        ep.all_count = ep.all_count + update_by
+        ep.count = ep.count + update_by
+        session.commit()
+        return 
 
 
 

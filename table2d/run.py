@@ -45,7 +45,7 @@ if __name__ == '__main__':
     scene.add_landmark(table)
     scene.add_landmark(obj1)
     scene.add_landmark(obj2)
-    scene.add_landmark(obj3)
+    # scene.add_landmark(obj3)
 
     # groups = adapter.adapt(scene)
 
@@ -69,12 +69,14 @@ if __name__ == '__main__':
     couple = 1
     for i in range(couple * dozen):
         location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-        speaker.describe(location, scene, False, 1)
+        # speaker.describe(location, scene, False, 2)
     # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
     # speaker.demo(location, scene)
     # all_desc = speaker.get_all_descriptions(location, scene, 1)
 
-    # speaker.communicate(scene, True)
+
+    for i in range(couple * dozen):
+        speaker.communicate(scene, False)
 
     # for desc in all_desc:
     #     print desc

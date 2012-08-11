@@ -94,14 +94,15 @@ class ModelScene(object):
     def sample_lmk_rel(self, loc, num_ancestors=None):
         """gets a location and returns a landmark and a relation
         that can be used to describe the given location"""
-
         landmarks = self.landmarks
+        
         if num_ancestors is not None:
             landmarks = [l for l in landmarks if l.get_ancestor_count() == num_ancestors]
 
         lmk, lmk_prob, lmk_entropy = self.speaker.sample_landmark(landmarks, loc)
         head_on = self.speaker.get_head_on_viewpoint(lmk)
-        rel, rel_prob, rel_entropy = self.speaker.sample_relation(loc, self.table.representation.get_geometry(), head_on, lmk)
+        rel, rel_prob, rel_entropy = self.speaker.sample_relation(loc, self.table.representation.get_geometry(), head_on, lmk, step=0.5)
+        rel = rel(head_on,lmk,loc)
 
         return lmk, rel
 
@@ -122,7 +123,7 @@ def get_meaning(loc=None, num_ancestors=None):
     if not loc:
         loc = scene.get_rand_loc()
 
-    lmk, rel = scene.sample_lmk_rel(loc, num_ancestors)
+    lmk, rel = scene.sample_lmk_rel(Vec2(*loc), num_ancestors)
     # print 'landmark: %s (%s)' % (lmk, lmk_id(lmk))
     # print 'relation:', rel_type(rel)
     return lmk, rel
@@ -138,7 +139,7 @@ def categorical_sample(values, probs):
     probs = np.array(probs)
     index = np.random.multinomial(1, probs).nonzero()[0][0]
     value = values[index]
-    return value, probs[index], -np.sum( (probs * np.log(probs))
+    return value, probs[index], -np.sum( (probs * np.log(probs)) )
 
 
 

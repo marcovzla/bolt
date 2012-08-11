@@ -24,9 +24,13 @@ def parse_sentences(ss, parser_path='../bllip-parser'):
     # get into the charniak parser directory
     os.chdir(parser_path)
     # call the parser
-    proc = subprocess.Popen(['./parse.sh', temp.name],
+    # try:
+    proc = subprocess.Popen(['./parse.sh','-t4', temp.name],
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
+    # except Exception as e:
+    #     print e
+    #     exit(1)
     # capture output
     output = proc.communicate()[0]
     # return to where i was
@@ -51,7 +55,7 @@ def modify_parses(trees, tregex_path='stanford-tregex',
     jar = os.path.join(tregex_path, 'stanford-tregex.jar')
     tsurgeon = 'edu.stanford.nlp.trees.tregex.tsurgeon.Tsurgeon'
     # surgery scripts
-    surgery = glob.glob(os.path.join(surgery_path, '*'))
+    surgery = sorted(glob.glob(os.path.join(surgery_path, '*')))
     proc = subprocess.Popen(['java', '-mx100m', '-cp', jar, tsurgeon,
                              '-s', '-treeFile', temp.name] + surgery,
                             stdout=subprocess.PIPE,
