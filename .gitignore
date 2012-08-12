@@ -3,3 +3,4 @@
 .ropeproject
 *.sublime-workspace
 *.sublime-project
+stanford-tregex/
