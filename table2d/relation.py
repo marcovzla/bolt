@@ -20,36 +20,43 @@ class RelationSet(object):
 
 class Degree(object):
     NONE = 2001
-    NOT_VERY = 2002
+    # NOT_VERY = 2002
     SOMEWHAT = 2003
     VERY = 2004
 
 
 class Measurement(object):
-    FAR = 1001
-    CLOSE = 1002
-    NEAR = 1003
+    NONE = 1001
+    FAR = 1002
+    CLOSE = 1003
+    NEAR = 1004
 
-    def __init__(self, distance, direction=None):
+    def __init__(self, distance, required=True):
         self.distance_class = {
             Measurement.FAR: (0.9, 0.05, 1),
             Measurement.CLOSE: (0.25, 0.05, -1),
             Measurement.NEAR: (0.4, 0.05, -1)
         }
 
+        if not required:
+            self.distance_class[Measurement.NONE] = (-100, 0.05, 1)
+
         self.degree_class = {
             Degree.NONE: 1,
-            Degree.NOT_VERY: 0.6,
+            # Degree.NOT_VERY: 0.6,
             Degree.SOMEWHAT: 0.75,
-            Degree.VERY: 2
+            Degree.VERY: 1.5
         }
 
+        self.required = required
         self.distance = distance
-        self.direction = direction
-
         self.best = self.evaluate_all()
-        self.best_degree_class = self.best[1]
         self.best_distance_class = self.best[2]
+
+        if self.best_distance_class == Measurement.NONE:
+            self.best_degree_class = Degree.NONE
+        else:
+            self.best_degree_class = self.best[1]
 
     def is_applicable(self, degree_class=None, distance_class=None):
         if degree_class is None:
@@ -77,6 +84,9 @@ class Measurement(object):
         ps /= sum(ps)
         index = ps.cumsum().searchsorted( random.sample(1) )[0]
         return probs[index]
+
+    def __repr__(self):
+        return 'Measurement< req: %i, bdegree: %i, bdistance: %i >' % (self.required, self.best_degree, self.best_distance)
 
 
 class DistanceRelation(Relation):
@@ -173,7 +183,7 @@ class OrientationRelation(Relation):
         self.projected = self.ori_ray.line.project(poi)
 
         self.distance = self.ori_ray.start.distance_to(self.projected)
-        self.measurement = Measurement(self.distance, self.orientation)
+        self.measurement = Measurement(self.distance, required=False)
 
     def is_applicable(self):
         if self.ori_ray.contains_point(self.projected) and not \
@@ -204,23 +214,25 @@ class RightRelation(OrientationRelation):
 
 
 class DistanceRelationSet(RelationSet):
-    def __init__(self):
-        self.epsilon = 0.000001
-        self.relations = [FromRelation, ToRelation, NextToRelation, AtRelation, ByRelation]
 
-    def sample_landmark(self, landmarks, poi):
+    epsilon = 0.000001
+    relations = [FromRelation, ToRelation, NextToRelation, AtRelation, ByRelation]
+
+    @classmethod
+    def sample_landmark(class_, landmarks, poi):
         distances = array([lmk.distance_to(poi) for lmk in landmarks])
-        scores = 1.0/(array(distances)**1.5 + self.epsilon)
+        scores = 1.0/(array(distances)**1.5 + class_.epsilon)
         scores[distances == 0] = 0
         lm_probabilities = scores/sum(scores)
         index = lm_probabilities.cumsum().searchsorted( random.sample(1) )[0]
         return index
 
-    def sample_relation(self, perspective, sampled_landmark, poi):
+    @classmethod
+    def sample_relation(class_, perspective, sampled_landmark, poi):
         rel_scores = []
         rel_instances = []
 
-        for relation in self.relations:
+        for relation in class_.relations:
             rel_instances.append( relation(perspective, sampled_landmark, poi) )
             rel_scores.append( rel_instances[-1].is_applicable() )
 
@@ -231,24 +243,28 @@ class DistanceRelationSet(RelationSet):
 
 
 class ContainmentRelationSet(RelationSet):
-    def __init__(self):
-        self.relations = [OnRelation, InRelation]
 
-    def sample_landmark(self, landmarks, poi):
+    relations = [OnRelation, InRelation]
+
+    @classmethod
+    def sample_landmark(class_,landmarks, poi):
         on_lmks = []
         for i,lmk in enumerate(landmarks):
-            if self.relations[0](None, lmk, poi).is_applicable():
+            if class_.relations[0](None, lmk, poi).is_applicable():
                 on_lmks.append( i )
         return choice(on_lmks)
 
-    def sample_relation(self, perspective, sampled_landmark, poi):
-        return choice(self.relations)(perspective, sampled_landmark, poi)
+    @classmethod
+    def sample_relation(class_, perspective, sampled_landmark, poi):
+        return choice(class_.relations)(perspective, sampled_landmark, poi)
+
 
 class OrientationRelationSet(RelationSet):
-    def __init__(self):
-        self.relations = [InFrontRelation, BehindRelation, LeftRelation, RightRelation]
 
-    def sample_landmark(self, landmarks, poi):
+    relations = [InFrontRelation, BehindRelation, LeftRelation, RightRelation]
+
+    @staticmethod
+    def sample_landmark(landmarks, poi):
         on_lmks = []
 
         for i,lmk in enumerate(landmarks):
@@ -257,12 +273,20 @@ class OrientationRelationSet(RelationSet):
 
         return choice(on_lmks)
 
-    def sample_relation(self, perspective, sampled_landmark, poi):
+    @classmethod
+    def sample_relation(class_, perspective, sampled_landmark, poi):
+        return choice( class_.get_applicable_relations(perspective,sampled_landmark,poi,True) )
+
+    @classmethod
+    def get_applicable_relations(class_, perspective, sampled_landmark, poi, use_distance):
         rels = []
 
-        for rel in self.relations:
+        for rel in class_.relations:
             rel_instance = rel(perspective, sampled_landmark, poi)
+            if not use_distance:
+                rel_instance.measurement.best_distance = Measurement.NONE
+                rel_instance.measurement.best_degree = Degree.NONE
             if rel_instance.is_applicable():
                 rels.append(rel_instance)
 
-        return choice(rels)
+        return rels

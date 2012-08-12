@@ -4,102 +4,124 @@ from planar.line import Line
 from landmark import Landmark
 
 
+point_words = ['bottle', 'cup', 'computer', 'laptop', 'keyboard', 'book', 'box', 'monitor',
+               'disc', 'CD', 'camera', 'lens', 'motor', 'screwdriver', 'pen', 'pencil']
 
 class_to_words = {
-    Landmark.TABLE:    ['table', 'table surface'],
-    Landmark.CHAIR:    ['chair'],
-    Landmark.CUP:      ['cup'],
-    Landmark.BOTTLE:   ['bottle'],
-    Landmark.EDGE:     ['edge'],
-    Landmark.CORNER:   ['corner'],
-    Landmark.MIDDLE:   ['middle'],
-    Landmark.HALF:     ['half'],
-    Landmark.END:      ['end'],
-    Landmark.SIDE:     ['side'],
-    FromRelation:      ['from'],
-    ToRelation:        ['to'],
-    NextToRelation:    ['next to'],
-    AtRelation:        ['at'],
-    ByRelation:        ['by'],
-    OnRelation:        ['on'],
-    InRelation:        ['in'],
-    InFrontRelation:   ['in front of'],
-    BehindRelation:    ['behind'],
-    LeftRelation:      ['to the left of'],
-    RightRelation:     ['to the right of'],
-    Degree.NONE:       [''],
-    Degree.NOT_VERY:   ['not very'],
-    Degree.SOMEWHAT:   ['somewhat'],
-    Degree.VERY:       ['very'],
-    Measurement.CLOSE: ['close'],
-    Measurement.FAR:   ['far'],
-    Measurement.NEAR:  ['near'],
+    Landmark.TABLE:    {'N' : ['table', 'table surface']},
+    Landmark.CHAIR:    {'N' : ['chair']},
+    Landmark.CUP:      {'N' : ['cup']},
+    Landmark.BOTTLE:   {'N' : ['bottle']},
+    Landmark.EDGE:     {'N' : ['edge']},
+    Landmark.CORNER:   {'N' : ['corner']},
+    Landmark.MIDDLE:   {'N' : ['middle']},
+    Landmark.HALF:     {'N' : ['half']},
+    Landmark.END:      {'N' : ['end']},
+    Landmark.SIDE:     {'N' : ['side']},
+    Landmark.LINE:     {'N' : ['line']},
+    FromRelation:      {'P' : ['from']},
+    ToRelation:        {'P' : ['to']},
+    NextToRelation:    {'P' : ['next to']},
+    AtRelation:        {'P' : ['at']},
+    ByRelation:        {'P' : ['by']},
+    OnRelation:        {'P' : ['on']},
+    InRelation:        {'P' : ['in']},
+    InFrontRelation:   {'P' : ['in front of'], 'A' : ['front', 'near']},
+    BehindRelation:    {'P' : ['behind'], 'A' : ['back', 'far']},
+    LeftRelation:      {'P' : ['to the left of'], 'A' : ['left']},
+    RightRelation:     {'P' : ['to the right of'], 'A' : ['right']},
+    Degree.NONE:       {'R' : ['']},
+    # Degree.NOT_VERY:   {'R' : ['not very']},
+    Degree.SOMEWHAT:   {'R' : ['somewhat']},
+    Degree.VERY:       {'R' : ['very']},
+    Measurement.NONE:  {'A' : ['']},
+    Measurement.CLOSE: {'A' : ['close']},
+    Measurement.FAR:   {'A' : ['far']},
+    Measurement.NEAR:  {'A' : ['near']},
 }
 
-def get_landmark_description(perspective, landmark):
-    top = landmark.get_top_parent()
-    midpoint = top.middle
-    lr_line = Line.from_points([perspective, midpoint])
-    nf_line = lr_line.perpendicular(midpoint)
+phrase_to_class = {
+    'table':    Landmark.TABLE,
+    'table surface':    Landmark.TABLE,
+    'chair':    Landmark.CHAIR,
+    'cup':  Landmark.CUP,
+    'bottle':   Landmark.BOTTLE,
+    'edge': Landmark.EDGE,
+    'corner':   Landmark.CORNER,
+    'middle':   Landmark.MIDDLE,
+    'half': Landmark.HALF,
+    'end':  Landmark.END,
+    'side': Landmark.SIDE,
+    'line': Landmark.LINE,
+    'from': FromRelation,
+    'to':   ToRelation,
+    'next to':  NextToRelation,
+    'at':   AtRelation,
+    'by':   ByRelation,
+    'on':   OnRelation,
+    'in':   InRelation,
+    'in front of':  InFrontRelation,
+    'front':    InFrontRelation,
+    'near': InFrontRelation,
+    'behind':   BehindRelation,
+    'back': BehindRelation,
+    'far':  BehindRelation,
+    'to the left of':   LeftRelation,
+    'left': LeftRelation,
+    'to the right of':  RightRelation,
+    'right':    RightRelation,
+    'somewhat': Degree.SOMEWHAT,
+    'very': Degree.VERY,
+    'close':    Measurement.CLOSE,
+    'of':   'OF',
+    'the':  'DT',
 
-    adj = ''
-    if landmark.parent:
-        parent_left = True
-        parent_right = True
-        parent_near = True
-        parent_far = True
+}
 
-        for point in landmark.parent.get_points():
-            if not (lr_line.point_left(point) or lr_line.contains_point(point)):
-                parent_left = False
-            if not (lr_line.point_right(point) or lr_line.contains_point(point)):
-                parent_right = False
-            if not (nf_line.point_left(point) or nf_line.contains_point(point)):
-                parent_near = False
-            if not (nf_line.point_right(point) or nf_line.contains_point(point)):
-                parent_far = False
-        parent_lr = parent_left or parent_right and not (parent_left and parent_right)
-        parent_nf = parent_near or parent_far and not (parent_near and parent_far)
+def get_landmark_description(perspective, landmark, delimit_chunks=False):
+    noun = choice(class_to_words[landmark.object_class]['N']) + (' * ' if delimit_chunks else ' ')
+    desc = 'the' + (' * ' if delimit_chunks else ' ')
 
-        landmark_left, landmark_right, landmark_near, landmark_far = True, True, True, True
-        for point in landmark.representation.get_points():
-            if not (lr_line.point_left(point) or lr_line.contains_point(point)):
-                landmark_left = False
-            if not (lr_line.point_right(point) or lr_line.contains_point(point)):
-                landmark_right = False
-            if not (nf_line.point_left(point) or nf_line.contains_point(point)):
-                landmark_near = False
-            if not (nf_line.point_right(point) or nf_line.contains_point(point)):
-                landmark_far = False
-
-        if not parent_nf:
-            if landmark_near and not landmark_far:
-                adj += 'near '
-            if landmark_far and not landmark_near:
-                adj += 'far '
-        if not parent_lr:
-            if landmark_left and not landmark_right:
-                adj += 'left '
-            if landmark_right and not landmark_left:
-                adj += 'right '
-
-    noun = choice(class_to_words[landmark.object_class])
-    desc = 'the ' + adj + noun
+    for option in landmark.ori_relations:
+        desc += choice( class_to_words[type(option)]['A'] ) + (' * ' if delimit_chunks else ' ')
+    desc += noun
 
     if landmark.parent and landmark.parent.parent_landmark:
         p_desc = get_landmark_description(perspective, landmark.parent.parent_landmark)
         if p_desc:
-            desc += ' of ' + p_desc
+            desc += 'of' + (' * ' if delimit_chunks else ' ') + p_desc
 
     return desc
 
-def get_relation_description(relation):
+def get_relation_description(relation, delimit_chunks=False):
     desc = ''
     if hasattr(relation, 'measurement') and not isinstance(relation,VeryCloseDistanceRelation): #TODO create another class called AdjacentRelation
         m = relation.measurement
-        degree = choice(class_to_words[m.best_degree_class])
-        desc += degree + (' ' if degree else '') + choice(class_to_words[m.best_distance_class]) + ' '
-    return desc + choice(class_to_words[type(relation)])
+        degree = choice(class_to_words[m.best_degree_class]['R'])
+        distance = choice(class_to_words[m.best_distance_class]['A'])
+        desc += degree   + ( (' * ' if delimit_chunks else ' ') if degree else '') + \
+                distance + ( (' * ' if delimit_chunks else ' ') if distance else '')
+    return desc + choice(class_to_words[type(relation)]['P']) + (' * ' if delimit_chunks else ' ')
 
-def describe(perspective, landmark, relation):
-    return get_relation_description(relation) + ' ' + get_landmark_description(perspective, landmark)
+def describe(perspective, landmark, relation, delimit_chunks=False):
+    return choice(point_words) + \
+           (' * ' if delimit_chunks else ' ') + \
+           get_relation_description(relation, delimit_chunks) + \
+           get_landmark_description(perspective, landmark, delimit_chunks)
+
+def phrases_to_meaning(phrases):
+    m = []
+
+    for p in phrases:
+        p = p.strip()
+        if p in phrase_to_class:
+            m.append(phrase_to_class[p])
+
+    print m
+
+if __name__ == '__main__':
+    f = open('/home/anton/github/bolt/voting-experts/input/word/bolt_all_3k.txt')
+    for l in f:
+        phrases = l.split('*')
+        print phrases
+        phrases_to_meaning(phrases)

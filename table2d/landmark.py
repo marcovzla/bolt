@@ -3,11 +3,33 @@
 import sys
 from planar import Vec2
 from planar import BoundingBox
+from planar import Polygon
 from planar.line import LineSegment
 from planar.line import Line
 from random import choice
 from uuid import uuid4
 from math import sqrt
+import numpy as np
+import matplotlib.pyplot as plt
+
+# Let's pretend we're importing this from planar
+class Circle(object):
+    def __init__(self, center, radius):
+        self.center = center
+        self.radius = radius
+        rad_point = Vec2(radius,radius)
+        self.bounding_box = BoundingBox([self.center - rad_point, self.center + rad_point])
+
+    def distance_to_edge(self, point):
+        return self.center.distance_to(point) - self.radius
+
+    def distance_to(self, point):
+        distance = self.distance_to_edge(point)
+        return distance if distance >= 0 else 0
+
+    def contains_point(self, point):
+        return True if self.distance_to_edge(point) < 0 else False
+
 
 def ccw(A,B,C):
     ccw = (C.y-A.y)*(B.x-A.x) > (B.y-A.y)*(C.x-A.x)
@@ -52,30 +74,38 @@ def bb_to_bb_manhattan_distance(bb1, bb2):
 
     return result
 
-def bb_to_edges(bb):
-    poly = bb.to_polygon()
+def poly_to_edges(poly):
     edges = []
     for i in range(1, len(poly)):
         edges.append( LineSegment.from_points( [poly[i-1],poly[i]]) )
     return edges
 
-def bb_to_vec_distance(bb, vec):
-    if bb.contains_point( vec ):
+def poly_to_vec_distance(poly, vec):
+    if poly.contains_point( vec ):
         return 0
 
     dists = []
-    for edge in bb_to_edges(bb):
+    for edge in poly_to_edges(poly):
         dists.append( edge.distance_to(vec) )
+
     return min(dists)
 
-def bb_to_seg_distance(bb, seg):
+def poly_to_seg_distance(poly, seg):
     dists = []
-    for edge in bb_to_edges(bb):
+
+    for edge in poly_to_edges(poly):
         dists.append(  seg_to_seg_distance( edge, seg )  )
+
     return min(dists)
 
 def bb_to_bb_distance(bb1, bb2):
     return sqrt(bb_to_bb_manhattan_distance(bb1,bb2))
+
+def poly_to_poly_distance(poly1, poly2):
+    dists = []
+    for e1 in poly_to_edges(poly1):
+        dists.append(poly_to_seg_distance(poly2, e1))
+    return min(dists)
 
 
 
@@ -90,6 +120,7 @@ class Landmark(object):
     HALF = 8
     END = 9
     SIDE = 10
+    LINE = 11
 
     def __init__(self, name, representation, parent, object_class):
         self.name = name
@@ -106,7 +137,7 @@ class Landmark(object):
     def __repr__(self):
         return self.name
 
-    def get_primary_axes(self):
+    def get_primary_axes(self, perspective=None):
         return self.get_top_parent().get_primary_axes()
 
     def distance_to(self, point):
@@ -202,16 +233,15 @@ class PointRepresentation(AbstractRepresentation):
 
     def distance_to(self, thing):
         if isinstance(thing, BoundingBox):
-            return self.distance_to_bb(thing)
+            return poly_to_vec_distance(thing.to_polygon(), self.location)
+        elif isinstance(thing, Polygon):
+            return poly_to_vec_distance(thing, self.location)
         else:
             return thing.distance_to(self.location)
 
-    def distance_to_bb(self, bb):
-        return bb_to_vec_distance(bb, self.location)
-
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
-        return self.location == other.location
+        return self.location.almost_equals(other.location)
 
     def get_points(self):
         return [self.location]
@@ -227,6 +257,8 @@ class LineRepresentation(AbstractRepresentation):
     def __init__(self, orientation='height', line=LineSegment.from_points([Vec2(0, 0), Vec2(1, 0)]), alt_of=None):
         super(LineRepresentation, self).__init__(alt_of)
         self.line = line
+        # extend the LineSegment to include a bounding_box field, planar doesn't have that originally
+        self.line.bounding_box = BoundingBox.from_points(self.line.points)
         self.num_dim = 1
         self.middle = line.mid
         self.alt_representations = [PointRepresentation(self.line.mid, self)]
@@ -234,33 +266,24 @@ class LineRepresentation(AbstractRepresentation):
         classes = [Landmark.END, Landmark.MIDDLE, Landmark.END] if orientation == 'height' \
              else [Landmark.SIDE, Landmark.MIDDLE, Landmark.SIDE]
 
-        self.landmarks = \
-            {
-                'start':  Landmark('start',  PointRepresentation(self.line.start), self, classes[0]),
-                'end':    Landmark('end',    PointRepresentation(self.line.end),   self, classes[2]),
-                'middle': Landmark('middle', PointRepresentation(self.line.mid),   self, classes[1]),
-            }
+        self.landmarks = {
+            'start':  Landmark('start',  PointRepresentation(self.line.start), self, classes[0]),
+            'end':    Landmark('end',    PointRepresentation(self.line.end),   self, classes[2]),
+            'middle': Landmark('middle', PointRepresentation(self.line.mid),   self, classes[1]),
+        }
 
     def my_project_point(self, point):
         return self.line.line.project(point)
 
     def distance_to(self, thing):
         if isinstance(thing,Vec2):
-            return self.distance_to_point(thing)
+            return self.line.distance_to(thing)
         elif isinstance(thing,LineSegment):
-            return self.distance_to_segment(thing)
+            return seg_to_seg_distance(self.line, thing)
         elif isinstance(thing,BoundingBox):
-            return self.distance_to_rectangle(thing)
-
-    def distance_to_point(self, point):
-        return self.line.distance_to(point)
-
-    def distance_to_segment(self, seg):
-        return seg_to_seg_distance(self.line, seg)
-
-    def distance_to_rectangle(self, bb):
-        return bb_to_seg_distance(bb, self.line)
-
+            return poly_to_seg_distance(thing.to_polygon(), self.line)
+        elif isinstance(thing,Polygon):
+            return poly_to_seg_distance(thing, self.line)
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
@@ -281,6 +304,46 @@ class LineRepresentation(AbstractRepresentation):
     def get_primary_axes(self):
         return [self.line.line, self.line.line.perpendicular(self.line.mid)]
 
+class CircleRepresentation(AbstractRepresentation):
+    def __init__(self, circ, alt_of=None):
+        self.circ = circ
+        self.num_dim = 2
+        self.middle = circ.center
+        self.landmarks = {
+            'middle': Landmark('middle', PointRepresentation(self.middle), self, Landmark.MIDDLE)
+        }
+
+    def my_project_point(self, point):
+        return point
+
+    def distance_to(self, thing):
+        if isinstance(thing,Vec2):
+            return self.circ.distance_to(thing)
+        elif isinstance(thing,LineSegment):
+            distance = thing.distance_to(self.circ.center) - self.circ.radius
+        elif isinstance(thing,BoundingBox):
+            distance = poly_to_vec_distance(thing.to_polygon(), self.circ.center) - self.circ.radius
+        elif isinstance(thing,Polygon):
+            distance = poly_to_vec_distance(thing, self.circ.center) - self.circ.radius
+        elif isinstance(thing,Circle):
+            self.circ.distance_to(thing.center) - thing.radius
+        return distance if distance > 0 else 0
+
+    def contains(self, other):
+        if other.num_dim > self.num_dim: return False
+        if other.num_dim == 0:
+            return self.circ.contains_point(other.location)
+        if other.num_dim == 1:
+            return self.circ.contains_point(other.line.start) and self.circ.contains_point(other.line.end)
+        if other.num_dim == 2:
+            if isinstance(other,Circle):
+                return True if self.circ.center.distance_to(other.circ.center) + other.circ.radius < self.circ.radius else False
+            for p in other.get_points():
+                if not self.circ.contains_point(p): return False
+            return True
+
+    def get_geometry(self):
+        return self.circ
 
 class RectangleRepresentation(AbstractRepresentation):
     def __init__(self, rect=BoundingBox([Vec2(0, 0), Vec2(1, 2)]),
@@ -350,20 +413,13 @@ class RectangleRepresentation(AbstractRepresentation):
 
     def distance_to(self, thing):
         if isinstance(thing,Vec2):
-            return self.distance_to_point(thing)
+            return poly_to_vec_distance(self.rect.to_polygon(), thing)
         elif isinstance(thing,LineSegment):
-            return self.distance_to_segment(thing)
+            return poly_to_seg_distance(self.rect.to_polygon(), thing)
         elif isinstance(thing,BoundingBox):
-            return self.distance_to_rectangle(thing)
-
-    def distance_to_point(self, point):
-        return bb_to_vec_distance(self.rect,point)
-
-    def distance_to_segment(self, seg):
-        return bb_to_seg_distance(self.rect, seg)
-
-    def distance_to_rectangle(self, bb):
-        return bb_to_bb_distance(self.rect, bb)
+            return bb_to_bb_distance(self.rect, thing)
+        elif isinstance(thing,Polygon):
+            return poly_to_poly_distance(self.rect.to_polygon(), thing)
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
@@ -372,8 +428,9 @@ class RectangleRepresentation(AbstractRepresentation):
         if other.num_dim == 1:
             return self.rect.contains_point(other.line.start) and self.rect.contains_point(other.line.end)
         if other.num_dim == 2:
-            if self.rect.min_point <= other.rect.min_point and self.rect.max_point >= other.rect.max_point: return True
-            return False
+            for p in other.get_points():
+                if not self.rect.contains_point(p): return False
+            return True
 
     def get_geometry(self):
         return self.rect
@@ -388,13 +445,79 @@ class RectangleRepresentation(AbstractRepresentation):
                                   Vec2(self.rect.center.x, self.rect.max_point.y)])]
 
 
+class PolygonRepresentation(AbstractRepresentation):
+    def __init__(self, poly, alt_of=None):
+        super(PolygonRepresentation, self).__init__(alt_of)
+        self.poly = poly
+        self.num_dim = 2
+        self.middle = poly.centroid
+        self.landmarks = {
+            'middle': Landmark('middle', PointRepresentation(self.middle), self, Landmark.MIDDLE)
+        }
+
+    def my_project_point(self, point):
+        return point
+
+    def distance_to(self, thing):
+        if isinstance(thing,Vec2):
+            return poly_to_vec_distance(self.poly, thing)
+        elif isinstance(thing,LineSegment):
+            return poly_to_seg_distance(self.poly, thing)
+        elif isinstance(thing,BoundingBox):
+            return poly_to_poly_distance(self.poly, thing.to_polygon())
+        elif isinstance(thing, Polygon):
+            return poly_to_poly_distance(self.poly, thing)
+
+    def contains(self, other):
+        if other.num_dim > self.num_dim: return False
+        if other.num_dim == 0:
+            return self.poly.contains_point(other.location)
+        if other.num_dim == 1:
+            return self.poly.contains_point(other.line.start) and self.poly.contains_point(other.line.end)
+        if other.num_dim == 2:
+            for p in other.get_points():
+                if not self.poly.contains_point(p): return False
+            return True
+
+    def get_geometry(self):
+        return self.poly
+
+    def get_points(self):
+        return list(self.poly)
+
+    def get_primary_axes(self):
+        return []
+
+
 class SurfaceRepresentation(RectangleRepresentation):
     def __init__(self, rect=BoundingBox([Vec2(0, 0), Vec2(1, 2)]), landmarks_to_get=[]):
         super(SurfaceRepresentation, self).__init__(rect, landmarks_to_get)
         self.alt_representations = []
 
-    # def distance_to(self, point):
-    #     return float('infinity')
+
+class GroupLineRepresentation(LineRepresentation):
+    def __init__(self, lmk_group, alt_of=None):
+        centers = np.array([lmk.representation.middle for lmk in lmk_group])
+        x = centers[:,0]
+        y = centers[:,1]
+        A = np.vstack([x, np.ones(len(x))]).T
+        m, c = np.linalg.lstsq(A, y)[0]
+        lxy = zip(x, m*x + c)
+        points = [Vec2(px,py) for px,py in sorted(lxy)]
+
+        super(GroupLineRepresentation, self).__init__(line=LineSegment.from_points(points),alt_of=alt_of)
+
+        sorted_idx = sorted(range(len(lxy)), key=lxy.__getitem__)
+        self.landmark_group = [lmk_group[idx] for idx in sorted_idx]
+
+
+class GroupRectangleRepresentation(RectangleRepresentation):
+    def __init__(self, lmk_group, alt_of=None):
+        shapes = [lmk.get_geometry() for lmk in lmk_group]
+        super(GroupRectangleRepresentation, self).__init__(rect=BoundingBox.from_shapes(shapes),
+                                                           landmarks_to_get=['middle'],
+                                                           alt_of=alt_of)
+        self.landmark_group = lmk_group
 
 
 class Scene(object):

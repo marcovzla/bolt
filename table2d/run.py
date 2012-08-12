@@ -1,9 +1,10 @@
 #!/usr/bin/env python
 from speaker import Speaker
 from planar import Vec2, BoundingBox
-from landmark import RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
+from landmark import GroupLineRepresentation, RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
 from random import random
 import pickle
+import adapter
 
 if __name__ == '__main__':
     # poi = Vec2(float(sys.argv[1]), 0)
@@ -44,7 +45,13 @@ if __name__ == '__main__':
     scene.add_landmark(table)
     scene.add_landmark(obj1)
     scene.add_landmark(obj2)
-    scene.add_landmark(obj3)
+    # scene.add_landmark(obj3)
+
+    # groups = adapter.adapt(scene)
+
+    # for i,g in enumerate(groups):
+    #     if (len(g) > 1):
+    #         scene.add_landmark(Landmark('ol%d'%i, ObjectLineRepresentation(g), None, Landmark.LINE))
 
     # f = open('scene.pickle','wb')
     # pickle.dump(scene,f)
@@ -62,10 +69,14 @@ if __name__ == '__main__':
     couple = 1
     for i in range(couple * dozen):
         location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-        speaker.describe(location, scene, True, 1)
+        # speaker.describe(location, scene, False, 2)
     # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
     # speaker.demo(location, scene)
     # all_desc = speaker.get_all_descriptions(location, scene, 1)
+
+
+    for i in range(couple * dozen):
+        speaker.communicate(scene, False)
 
     # for desc in all_desc:
     #     print desc

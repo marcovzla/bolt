@@ -4,3 +4,6 @@
 *.sublime-workspace
 *.sublime-project
 stanford-tregex/
+.DS_Store
+.project
+.pydevproject
