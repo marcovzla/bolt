@@ -7,10 +7,10 @@ from landmark import PointRepresentation
 
 
 class Relation(object):
-    def __init__(self, perspective, landmark, poi):
+    def __init__(self, perspective, landmark, trajector):
         self.perspective = perspective
         self.landmark = landmark
-        self.poi = poi
+        self.trajector = trajector
 
 
 class RelationSet(object):
@@ -90,31 +90,31 @@ class Measurement(object):
 
 
 class DistanceRelation(Relation):
-    def __init__(self, perspective, landmark, poi):
-        super(DistanceRelation, self).__init__(perspective, landmark, poi)
-        self.distance = self.landmark.distance_to(self.poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(DistanceRelation, self).__init__(perspective, landmark, trajector)
+        self.distance = self.landmark.distance_to(self.trajector)
         self.measurement = Measurement(self.distance)
 
     def is_applicable(self):
-        if not self.landmark.representation.contains( PointRepresentation(self.poi) ):
+        if not self.landmark.representation.contains( self.trajector ):
             return self.measurement.is_applicable()
         else:
             return 0.0
 
 
 class FromRelation(DistanceRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(FromRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(FromRelation, self).__init__(perspective, landmark, trajector)
 
 
 class ToRelation(DistanceRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(ToRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(ToRelation, self).__init__(perspective, landmark, trajector)
 
 
 class VeryCloseDistanceRelation(DistanceRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(VeryCloseDistanceRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(VeryCloseDistanceRelation, self).__init__(perspective, landmark, trajector)
         self.measurement.best_degree_class = Degree.VERY
         self.measurement.best_distance_class = Measurement.CLOSE
 
@@ -123,41 +123,41 @@ class VeryCloseDistanceRelation(DistanceRelation):
 
 
 class NextToRelation(VeryCloseDistanceRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(NextToRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(NextToRelation, self).__init__(perspective, landmark, trajector)
 
 
 class AtRelation(VeryCloseDistanceRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(AtRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(AtRelation, self).__init__(perspective, landmark, trajector)
 
 
 class ByRelation(VeryCloseDistanceRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(ByRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(ByRelation, self).__init__(perspective, landmark, trajector)
 
 
 class ContainmentRelation(Relation):
-    def __init__(self, perspective, landmark, poi):
-        super(ContainmentRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(ContainmentRelation, self).__init__(perspective, landmark, trajector)
 
     def is_applicable(self):
-        return float(self.landmark.representation.contains( PointRepresentation(self.poi) ))
+        return float(self.landmark.representation.contains( self.trajector ))
 
 
 class OnRelation(ContainmentRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(OnRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(OnRelation, self).__init__(perspective, landmark, trajector)
 
 
 class InRelation(ContainmentRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(InRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector):
+        super(InRelation, self).__init__(perspective, landmark, trajector)
 
 
 class OrientationRelation(Relation):
-    def __init__(self, perspective, landmark, poi, orientation):
-        super(OrientationRelation, self).__init__(perspective, landmark, poi)
+    def __init__(self, perspective, landmark, trajector, orientation):
+        super(OrientationRelation, self).__init__(perspective, landmark, trajector)
         self.standard = Vec2(0,1)
         self.orientation = orientation
 
@@ -180,7 +180,8 @@ class OrientationRelation(Relation):
         rotation.itransform(o)
         direction = o[0]
         self.ori_ray = Ray(p_segment.end, direction)
-        self.projected = self.ori_ray.line.project(poi)
+        # TODO make sure this works using .middle
+        self.projected = self.ori_ray.line.project(trajector.middle)
 
         self.distance = self.ori_ray.start.distance_to(self.projected)
         self.measurement = Measurement(self.distance, required=False)
@@ -194,23 +195,23 @@ class OrientationRelation(Relation):
 
 
 class InFrontRelation(OrientationRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(InFrontRelation, self).__init__(perspective, landmark, poi, Vec2(0,-1))
+    def __init__(self, perspective, landmark, trajector):
+        super(InFrontRelation, self).__init__(perspective, landmark, trajector, Vec2(0,-1))
 
 
 class BehindRelation(OrientationRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(BehindRelation, self).__init__(perspective, landmark, poi, Vec2(0,1))
+    def __init__(self, perspective, landmark, trajector):
+        super(BehindRelation, self).__init__(perspective, landmark, trajector, Vec2(0,1))
 
 
 class LeftRelation(OrientationRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(LeftRelation, self).__init__(perspective, landmark, poi, Vec2(-1,0))
+    def __init__(self, perspective, landmark, trajector):
+        super(LeftRelation, self).__init__(perspective, landmark, trajector, Vec2(-1,0))
 
 
 class RightRelation(OrientationRelation):
-    def __init__(self, perspective, landmark, poi):
-        super(RightRelation, self).__init__(perspective, landmark, poi, Vec2(1,0))
+    def __init__(self, perspective, landmark, trajector):
+        super(RightRelation, self).__init__(perspective, landmark, trajector, Vec2(1,0))
 
 
 class DistanceRelationSet(RelationSet):
@@ -219,8 +220,8 @@ class DistanceRelationSet(RelationSet):
     relations = [FromRelation, ToRelation, NextToRelation, AtRelation, ByRelation]
 
     @classmethod
-    def sample_landmark(class_, landmarks, poi):
-        distances = array([lmk.distance_to(poi) for lmk in landmarks])
+    def sample_landmark(class_, landmarks, trajector):
+        distances = array([lmk.distance_to(trajector) for lmk in landmarks])
         scores = 1.0/(array(distances)**1.5 + class_.epsilon)
         scores[distances == 0] = 0
         lm_probabilities = scores/sum(scores)
@@ -228,12 +229,12 @@ class DistanceRelationSet(RelationSet):
         return index
 
     @classmethod
-    def sample_relation(class_, perspective, sampled_landmark, poi):
+    def sample_relation(class_, perspective, sampled_landmark, trajector):
         rel_scores = []
         rel_instances = []
 
         for relation in class_.relations:
-            rel_instances.append( relation(perspective, sampled_landmark, poi) )
+            rel_instances.append( relation(perspective, sampled_landmark, trajector) )
             rel_scores.append( rel_instances[-1].is_applicable() )
 
         rel_scores = array(rel_scores)
@@ -247,16 +248,16 @@ class ContainmentRelationSet(RelationSet):
     relations = [OnRelation, InRelation]
 
     @classmethod
-    def sample_landmark(class_,landmarks, poi):
+    def sample_landmark(class_,landmarks, trajector):
         on_lmks = []
         for i,lmk in enumerate(landmarks):
-            if class_.relations[0](None, lmk, poi).is_applicable():
+            if class_.relations[0](None, lmk, trajector).is_applicable():
                 on_lmks.append( i )
         return choice(on_lmks)
 
     @classmethod
-    def sample_relation(class_, perspective, sampled_landmark, poi):
-        return choice(class_.relations)(perspective, sampled_landmark, poi)
+    def sample_relation(class_, perspective, sampled_landmark, trajector):
+        return choice(class_.relations)(perspective, sampled_landmark, trajector)
 
 
 class OrientationRelationSet(RelationSet):
@@ -264,25 +265,25 @@ class OrientationRelationSet(RelationSet):
     relations = [InFrontRelation, BehindRelation, LeftRelation, RightRelation]
 
     @staticmethod
-    def sample_landmark(landmarks, poi):
+    def sample_landmark(landmarks, trajector):
         on_lmks = []
 
         for i,lmk in enumerate(landmarks):
-            if not lmk.representation.contains( PointRepresentation(poi) ):
+            if not lmk.representation.contains( trajector ):
                 on_lmks.append( i )
 
         return choice(on_lmks)
 
     @classmethod
-    def sample_relation(class_, perspective, sampled_landmark, poi):
-        return choice( class_.get_applicable_relations(perspective,sampled_landmark,poi,True) )
+    def sample_relation(class_, perspective, sampled_landmark, trajector):
+        return choice( class_.get_applicable_relations(perspective,sampled_landmark,trajector,True) )
 
     @classmethod
-    def get_applicable_relations(class_, perspective, sampled_landmark, poi, use_distance):
+    def get_applicable_relations(class_, perspective, sampled_landmark, trajector, use_distance):
         rels = []
 
         for rel in class_.relations:
-            rel_instance = rel(perspective, sampled_landmark, poi)
+            rel_instance = rel(perspective, sampled_landmark, trajector)
             if not use_distance:
                 rel_instance.measurement.best_distance = Measurement.NONE
                 rel_instance.measurement.best_degree = Degree.NONE
