@@ -4,8 +4,8 @@ from planar.line import Line
 from landmark import Landmark
 
 
-point_words = ['bottle', 'cup', 'computer', 'laptop', 'keyboard', 'book', 'box', 'monitor',
-               'disc', 'CD', 'camera', 'lens', 'motor', 'screwdriver', 'pen', 'pencil']
+# point_words = ['bottle', 'cup', 'computer', 'laptop', 'keyboard', 'book', 'box', 'monitor',
+#                'disc', 'CD', 'camera', 'lens', 'motor', 'screwdriver', 'pen', 'pencil']
 
 class_to_words = {
     Landmark.TABLE:    {'N' : ['table', 'table surface']},
@@ -19,6 +19,7 @@ class_to_words = {
     Landmark.END:      {'N' : ['end']},
     Landmark.SIDE:     {'N' : ['side']},
     Landmark.LINE:     {'N' : ['line']},
+    Landmark.POINT:    {'N' : ['point']},
     FromRelation:      {'P' : ['from']},
     ToRelation:        {'P' : ['to']},
     NextToRelation:    {'P' : ['next to']},
@@ -103,8 +104,9 @@ def get_relation_description(relation, delimit_chunks=False):
                 distance + ( (' * ' if delimit_chunks else ' ') if distance else '')
     return desc + choice(class_to_words[type(relation)]['P']) + (' * ' if delimit_chunks else ' ')
 
-def describe(perspective, landmark, relation, delimit_chunks=False):
-    return choice(point_words) + \
+def describe(perspective, trajector, landmark, relation, delimit_chunks=False):
+    return 'There is a ' + \
+           choice(class_to_words[trajector.object_class]['N']) + \
            (' * ' if delimit_chunks else ' ') + \
            get_relation_description(relation, delimit_chunks) + \
            get_landmark_description(perspective, landmark, delimit_chunks)

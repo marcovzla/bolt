@@ -2,7 +2,7 @@ from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRel
 from numpy import array, arange, zeros, log, argmin, set_printoptions, random
 from random import choice
 from matplotlib import pyplot as plt
-from landmark import PointRepresentation, LineRepresentation, GroupLineRepresentation, RectangleRepresentation
+from landmark import PointRepresentation, LineRepresentation, GroupLineRepresentation, RectangleRepresentation, Landmark
 from planar import Vec2
 import sys
 from textwrap import wrap
@@ -25,12 +25,18 @@ class Speaker(object):
             return self.location
 
     def describe(self, trajector, scene, visualize=False, max_level=-1, delimit_chunks=False):
+
         scenes = scene.get_child_scenes(trajector) + [scene]
 
         all_landmarks = []
 
         for s in scenes:
             for scene_lmk in s.landmarks.values():
+
+                # Don't want to use the trajector as landmark
+                if scene_lmk == trajector:
+                    continue
+
                 all_landmarks.append([s, scene_lmk])
 
                 representations = [scene_lmk.representation]
@@ -53,7 +59,7 @@ class Speaker(object):
         print '   ',sampled_relation, sr_prob, sr_ent
         sampled_relation = sampled_relation( head_on, sampled_landmark, trajector )
 
-        description = str(trajector) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation, delimit_chunks)
+        description = str(trajector) + '; ' + language_generator.describe(head_on, trajector, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
         if visualize: self.visualize(sampled_scene, trajector, head_on, sampled_landmark, sampled_relation, description, 0.1)
@@ -88,7 +94,7 @@ class Speaker(object):
         print sampled_relation, self.get_relation_probability( sampled_relation, trajector, scene.get_bounding_box(), perspective, sampled_landmark, step=0.1)
 
         sampled_relation = sampled_relation(perspective, sampled_landmark, trajector)
-        description = str(trajector) + '; ' + language_generator.describe(perspective, sampled_landmark, sampled_relation, delimit_chunks)
+        description = str(trajector) + '; ' + language_generator.describe(perspective, trajector, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
         if visualize: self.visualize(scene, trajector, perspective, sampled_landmark, sampled_relation, description, 0.1)
@@ -97,7 +103,12 @@ class Speaker(object):
         options = set()
         if landmark.parent and landmark.parent.parent_landmark:
             middle_lmk = Landmark('', PointRepresentation(landmark.parent.middle), landmark.parent, None)
-            options = OrientationRelationSet.get_applicable_relations(perspective, middle_lmk, PointRepresentation(landmark.representation.middle), use_distance=False)
+            options = OrientationRelationSet.get_applicable_relations(perspective, 
+                                                                      middle_lmk, 
+                                                                      Landmark( None, 
+                                                                                PointRepresentation(landmark.representation.middle),
+                                                                                None, None), 
+                                                                      use_distance=False)
 
             par_lmk = landmark.parent.parent_landmark
             if par_lmk.parent and par_lmk.parent.parent_landmark:
@@ -211,7 +222,7 @@ class Speaker(object):
 
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
-                p = PointRepresentation( Vec2(x,y) )
+                p = Landmark( None, PointRepresentation( Vec2(x,y) ), None, None )
                 points[j,i] = p
                 rel = relation( perspective, landmark, p )
                 probabilities[j,i] = rel.is_applicable()
@@ -239,7 +250,7 @@ class Speaker(object):
     def sample_landmark(self, landmarks, trajector):
         ''' Weight by inverse of distance to landmark center and choose probabilistically  '''
         epsilon = 0.000001
-        distances = array([trajector.distance_to(lmk.representation.middle) for lmk in landmarks])
+        distances = array([trajector.distance_to( PointRepresentation(lmk.representation.middle) ) for lmk in landmarks])
         scores = 1.0/(array(distances)**1.5 + epsilon)
         # scores[distances == 0] = 0
         lm_probabilities = scores/sum(scores)
@@ -267,7 +278,7 @@ class Speaker(object):
 
         for s in [DistanceRelationSet, OrientationRelationSet, ContainmentRelationSet]:
             for rel in s.relations:
-                rel_scores.append(self.evaluate_trajector(trajector, bounding_box, rel, perspective, landmark, step))
+                rel_scores.append(self.evaluate_trajector_likelihood(trajector, bounding_box, rel, perspective, landmark, step))
                 rel_classes.append(rel)
 
         rel_scores = array(rel_scores)
@@ -306,7 +317,7 @@ class Speaker(object):
         probs, points = self.get_probabilities_box(bounding_box, relation, perspective, landmark)
         probs /= probs.sum()
         index = probs.cumsum().searchsorted( random.sample(1) )[0]
-        return points.flatten()[index]
+        return Landmark( 'point', points.flatten()[index], None, Landmark.POINT )
 
     def get_entropy(self, probabilities):
         probabilities += 1e-15
@@ -363,18 +374,18 @@ class Speaker(object):
                  self.location.y,
                  'bx',markeredgewidth=2)
 
-        if isinstance(trajector, GroupLineRepresentation):
-            xs = [trajector.line.start.x, trajector.line.end.x]
-            ys = [trajector.line.start.y, trajector.line.end.y]
+        if isinstance(trajector.representation, GroupLineRepresentation):
+            xs = [trajector.representation.line.start.x, trajector.representation.line.end.x]
+            ys = [trajector.representation.line.start.y, trajector.representation.line.end.y]
             plt.fill(xs,ys,facecolor='none',linewidth=2)
         elif isinstance(lmk.representation, RectangleRepresentation):
-            rect = trajector.rect
+            rect = trajector.representation.rect
             xs = [rect.min_point.x,rect.min_point.x,rect.max_point.x,rect.max_point.x]
             ys = [rect.min_point.y,rect.max_point.y,rect.max_point.y,rect.min_point.y]
             plt.fill(xs,ys,facecolor='none',linewidth=2)
             plt.text(rect.min_point.x+0.01,rect.max_point.y+0.02,lmk.name)
-        plt.text(trajector.middle.x+0.01,
-                 trajector.middle.y+0.02,'trajector')
+        plt.text(trajector.representation.middle.x+0.01,
+                 trajector.representation.middle.y+0.02,'trajector')
 
         '''
         plt.plot(poi.x,poi.y,'rx',markeredgewidth=2)

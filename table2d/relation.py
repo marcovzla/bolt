@@ -92,11 +92,11 @@ class Measurement(object):
 class DistanceRelation(Relation):
     def __init__(self, perspective, landmark, trajector):
         super(DistanceRelation, self).__init__(perspective, landmark, trajector)
-        self.distance = self.landmark.distance_to(self.trajector)
+        self.distance = self.landmark.distance_to(self.trajector.representation)
         self.measurement = Measurement(self.distance)
 
     def is_applicable(self):
-        if not self.landmark.representation.contains( self.trajector ):
+        if not self.landmark.representation.contains( self.trajector.representation ):
             return self.measurement.is_applicable()
         else:
             return 0.0
@@ -142,7 +142,7 @@ class ContainmentRelation(Relation):
         super(ContainmentRelation, self).__init__(perspective, landmark, trajector)
 
     def is_applicable(self):
-        return float(self.landmark.representation.contains( self.trajector ))
+        return float(self.landmark.representation.contains( self.trajector.representation ))
 
 
 class OnRelation(ContainmentRelation):
@@ -181,7 +181,7 @@ class OrientationRelation(Relation):
         direction = o[0]
         self.ori_ray = Ray(p_segment.end, direction)
         # TODO make sure this works using .middle
-        self.projected = self.ori_ray.line.project(trajector.middle)
+        self.projected = self.ori_ray.line.project(trajector.representation.middle)
 
         self.distance = self.ori_ray.start.distance_to(self.projected)
         self.measurement = Measurement(self.distance, required=False)
@@ -221,7 +221,7 @@ class DistanceRelationSet(RelationSet):
 
     @classmethod
     def sample_landmark(class_, landmarks, trajector):
-        distances = array([lmk.distance_to(trajector) for lmk in landmarks])
+        distances = array([lmk.distance_to(trajector.representation) for lmk in landmarks])
         scores = 1.0/(array(distances)**1.5 + class_.epsilon)
         scores[distances == 0] = 0
         lm_probabilities = scores/sum(scores)
@@ -269,7 +269,7 @@ class OrientationRelationSet(RelationSet):
         on_lmks = []
 
         for i,lmk in enumerate(landmarks):
-            if not lmk.representation.contains( trajector ):
+            if not lmk.representation.contains( trajector.representation ):
                 on_lmks.append( i )
 
         return choice(on_lmks)

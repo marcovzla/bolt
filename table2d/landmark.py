@@ -111,17 +111,18 @@ def poly_to_poly_distance(poly1, poly2):
 
 
 class Landmark(object):
-    TABLE = 1
-    CHAIR = 2
-    CUP = 3
-    BOTTLE = 4
-    EDGE = 5
-    CORNER = 6
-    MIDDLE = 7
-    HALF = 8
-    END = 9
-    SIDE = 10
-    LINE = 11
+    TABLE = 'TABLE'
+    CHAIR = 'CHAIR'
+    CUP = 'CUP'
+    BOTTLE = 'BOTTLE'
+    EDGE = 'EDGE'
+    CORNER = 'CORNER'
+    MIDDLE = 'MIDDLE'
+    HALF = 'HALF'
+    END = 'END'
+    SIDE = 'SIDE'
+    LINE = 'LINE'
+    POINT = 'POINT'
 
     def __init__(self, name, representation, parent, object_class):
         self.name = name
@@ -541,11 +542,11 @@ class Scene(object):
     def add_landmark(self, lmk):
         self.landmarks[lmk.name] = lmk
 
-    def get_child_scenes(self, loi):
+    def get_child_scenes(self, trajector):
         scenes = []
 
         for lmk1 in self.landmarks.values():
-            if lmk1.representation.contains(loi.representation):
+            if lmk1.representation.contains(trajector.representation):
                 sc = Scene(lmk1.representation.num_dim)
 
                 for lmk2 in self.landmarks.values():
