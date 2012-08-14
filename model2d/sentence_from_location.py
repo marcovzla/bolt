@@ -10,7 +10,7 @@ from utils import (get_meaning, categorical_sample, parent_landmark,
                    lmk_id, rel_type, m2s, count_lmk_phrases)
 from models import Word, Production
 
-from location_from_sentence import get_sentence_posteriors
+from location_from_sentence import get_sentence_posteriors, get_sentence_meaning_likelihood
 import collections
 import numpy as np
 
@@ -64,18 +64,27 @@ def get_words(expn, parent, lmk=None, rel=None):
     print 'expanding %s to %s (p: %f, H: %f)' % (expn, words, p, H)
     return words, p, H
 
-
+class Meaning(object):
+    def __init__(self, **args):
+        self.args = args
+        
 
 def generate_sentence(loc, consistent):
     while True:
-        lmk, rel = get_meaning(loc=loc)
+        (lmk, lmk_prob, lmk_ent), (rel, rel_prob, rel_ent) = get_meaning(loc=loc)
         print m2s(lmk, rel)
-        rel_exp, rel_prob, rel_ent = get_expansion('RELATION', rel=rel)
-        lmk_exp, lmk_prob, lmk_ent = get_expansion('LANDMARK-PHRASE', lmk=lmk)
+        rel_exp, rele_prob, rele_ent = get_expansion('RELATION', rel=rel)
+        lmk_exp, lmke_prob, lmke_ent = get_expansion('LANDMARK-PHRASE', lmk=lmk)
         rel_words, relw_prob, relw_ent = get_words(rel_exp, 'RELATION', rel=rel)
         lmk_words, lmkw_prob, lmkw_ent = get_words(lmk_exp, 'LANDMARK-PHRASE', lmk=lmk)
         sentence = ' '.join(rel_words + lmk_words)
 
+        meaning = Meaning(lmk, lmk_prob, lmk_ent,
+                       lmk_exp, lmke_prob, lmke_ent,
+                       lmk_words, lmkw_prob, lmkw_ent,
+                       rel, rel_prob, rel_ent,
+                       rel_exp, rele_prob, rele_ent,
+                       rel_words, relw_prob, relw_ent)
         if consistent:
             meaning1 = m2s(lmk,rel)
             # get the most likely meaning for the generated sentence
@@ -85,9 +94,19 @@ def generate_sentence(loc, consistent):
             if meaning1 != meaning2:
                 continue
 
-        return sentence
+        return meaning, sentence
 
+def accept_correction( meaning, correction ):
+    (lmk, lmk_prob, lmk_ent,
+    lmk_exp, lmke_prob, lmke_ent,
+    lmk_words, lmkw_prob, lmkw_ent,
+    rel, rel_prob, rel_ent,
+    rel_exp, rele_prob, rele_ent,
+    rel_words, relw_prob, relw_ent) = meaning.args
 
+    old_meaning_prob = get_sentence_meaning_likelihood( correction, lmk, rel )
+
+    print lmk_prob, rel_prob, old_meaning_prob, lmk_prob * rel_prob * old_meaning_prob
 
 # this class is only used for the --location command line argument
 class Point(object):
@@ -108,6 +127,6 @@ if __name__ == '__main__':
     parser.add_argument('--consistent', action='store_true')
     args = parser.parse_args()
 
-    sentence = generate_sentence(args.location.xy, args.consistent)
+    _, sentence = generate_sentence(args.location.xy, args.consistent)
 
     print 'sentence:', sentence

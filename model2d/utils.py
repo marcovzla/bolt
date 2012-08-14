@@ -13,7 +13,7 @@ from planar import Vec2, BoundingBox
 # import stuff from table2d
 sys.path.append('..')
 from table2d.speaker import Speaker
-from table2d.landmark import RectangleRepresentation, Scene, Landmark
+from table2d.landmark import RectangleRepresentation, Scene, Landmark, PointRepresentation
 from table2d.relation import (DistanceRelationSet,
                               ContainmentRelationSet,
                               OrientationRelationSet,
@@ -99,12 +99,13 @@ class ModelScene(object):
         if num_ancestors is not None:
             landmarks = [l for l in landmarks if l.get_ancestor_count() == num_ancestors]
 
-        lmk, lmk_prob, lmk_entropy = self.speaker.sample_landmark(landmarks, loc)
+        loc = Landmark(None, PointRepresentation(loc), None, None)
+        lmk, lmk_prob, lmk_entropy = self.speaker.sample_landmark( landmarks, loc )
         head_on = self.speaker.get_head_on_viewpoint(lmk)
         rel, rel_prob, rel_entropy = self.speaker.sample_relation(loc, self.table.representation.get_geometry(), head_on, lmk, step=0.5)
         rel = rel(head_on,lmk,loc)
 
-        return lmk, rel
+        return (lmk, lmk_prob, lmk_entropy), (rel, rel_prob, rel_entropy)
 
 
 # we will use this instance of the scene
