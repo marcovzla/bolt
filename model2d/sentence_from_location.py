@@ -11,7 +11,7 @@ from utils import (get_meaning, categorical_sample, parent_landmark,
 from models import Word, Production
 
 from location_from_sentence import get_sentence_posteriors, get_sentence_meaning_likelihood
-import collections
+#import collections
 import numpy as np
 
 NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
@@ -22,7 +22,12 @@ def get_expansion(lhs, parent=None, lmk=None, rel=None):
     p_db = Production.get_productions(lhs=lhs, parent=parent,
                                       lmk=lmk_id(lmk), rel=rel_type(rel))
 
-    counter = collections.Counter(p_db)
+    counter = {}
+    for prod in p_db:
+        if prod in counter: counter[prod] += 1
+        else: counter[prod] = 1
+
+    #counter = collections.Counter(p_db)
     keys, counts = zip(*counter.items())
     counts = np.array(counts)
     counts /= counts.sum()
@@ -52,7 +57,13 @@ def get_words(expn, parent, lmk=None, rel=None):
         else:
             # get word for POS
             w_db = Word.get_words(pos=n, lmk=lmk_id(lmk), rel=rel_type(rel))
-            counter = collections.Counter(w_db)
+
+            counter = {}
+            for w in w_db:
+                if w in counter: counter[w] += 1
+                else: counter[w] = 1
+
+            #counter = collections.Counter(w_db)
             keys, counts = zip(*counter.items())
             counts = np.array(counts)
             counts /= counts.sum()
@@ -67,7 +78,7 @@ def get_words(expn, parent, lmk=None, rel=None):
 class Meaning(object):
     def __init__(self, **args):
         self.args = args
-        
+
 
 def generate_sentence(loc, consistent):
     while True:
