@@ -3,6 +3,7 @@ from Tkinter import *
 import SceneEval
 import numpy as np
 import pickle
+import cluster_util
 from cluster_util import ClusterParams,PhysicalObject
 import tkFileDialog
 
@@ -136,7 +137,7 @@ class PlaygroundWindow:
         self.c.delete("line")
         color = "green"
         weight = 4
-        print "chains",chains
+
         
     def saveScene(self):
         params = tuple([eval(self.distance_limit.get()),
@@ -180,16 +181,24 @@ class PlaygroundWindow:
         self.c.delete("line")
         color1 = "#00FF00"
         color2 = "#00bb00"
+        blue = "#0000FF"
         color = color1
         weight = 4
-        for c in chains[:-1]:
-            for o in range(len(c)-1):
-                if color == color1: color=color2
-                else: color = color1
-                linePts = self.c.coords(c[o])[0:2]+self.c.coords(c[o+1])[0:2]
-                linePts = map(int,linePts)
-                linePts = map(lambda x: x+10,linePts)
-                self.c.create_line(linePts,fill=color,tags="line",width=weight) 
+        for c in chains:
+            if type(c)==cluster_util.LineBundle:
+                for o in range(len(c)-1):
+                    if color == color1: color=color2
+                    else: color = color1
+                    linePts = self.c.coords(c[o])[0:2]+self.c.coords(c[o+1])[0:2]
+                    linePts = map(int,linePts)
+                    linePts = map(lambda x: x+10,linePts)
+                    self.c.create_line(linePts,fill=color,tags="line",width=weight)
+            elif type(c)==cluster_util.GroupBundle:
+                for o in range(len(c)-1):
+                    linePts = self.c.coords(c[o])[0:2]+self.c.coords(c[o+1])[0:2]
+                    linePts = map(int,linePts)
+                    linePts = map(lambda x: x+10,linePts)
+                    self.c.create_line(linePts,fill=blue,tags="line",width=weight)  
             
             
 #    def chainViz(self,chains):

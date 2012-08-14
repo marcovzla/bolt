@@ -11,6 +11,7 @@ from scipy.spatial import distance
 from sklearn.cluster import DBSCAN
 from sklearn import metrics
 from sklearn.datasets.samples_generator import make_blobs
+import cluster_util
 
 
 def clustercost(data):
@@ -23,10 +24,10 @@ def clustercost(data):
     
     #cores
     for i in data[0].viewvalues():
-        corecluster=(len(i)*.7,i,'small_group')
+        corecluster=cluster_util.GroupBundle(i,len(i)*.8)
         smallClusters.append(corecluster)
     for i in data[1].viewvalues():
-        bigcluster = (len(i)*.95,i,'big_group')
+        bigcluster = cluster_util.GroupBundle(i,len(i)*.8)
         bigClusters.append(bigcluster)
         
     return (smallClusters,bigClusters)
@@ -67,5 +68,5 @@ def dbscan(data):
         except:
             fringedict[int(i[0])]=[]
             fringedict[int(i[0])].append(i[1])
-    
+    print coredict,fringedict
     return (coredict,fringedict)
