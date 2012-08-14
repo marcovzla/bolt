@@ -57,14 +57,17 @@ class Bundle(object):
         
 class LineBundle(Bundle):
     def __init__(self,members,cost):
+        self.bundleType='line'
         super(LineBundle,self).__init__(members,cost)
         
 class SingletonBundle(Bundle):
     def __init__(self,members,cost):
+        self.bundleType='singleton'
         super(SingletonBundle,self).__init__(members,cost)
         
 class GroupBundle(Bundle):
     def __init__(self,members,cost):
+        self.bundleType='group'
         super(GroupBundle,self).__init__(members,cost)
         
 
