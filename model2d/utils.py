@@ -38,28 +38,27 @@ def count_lmk_phrases(t):
 
 # a wrapper for a table2d scene
 class ModelScene(object):
-    def __init__(self):
-        self.scene = Scene(3)
+    def __init__(self, scene=None):
+        self.scene = scene
+        if scene is None:
+            self.scene = Scene(3)
 
-        # not a very furnished scene, we only have one table
-        table = Landmark('table',
-                         RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(6,7)])),
-                         None,
-                         Landmark.TABLE)
+            # not a very furnished scene, we only have one table
+            table = Landmark('table',
+                             RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(6,7)])),
+                             None,
+                             Landmark.TABLE)
 
-        self.scene.add_landmark(table)
-        self.table = table
-
+            self.scene.add_landmark(table)
+            self.table = table
+            
+        self.table = self.scene.landmarks['table']
         # there is a person standing at this location
         # he will be our reference
         self.speaker = Speaker(Vec2(5.5, 4.5))
 
         # NOTE we need to keep around the list of landmarks so that we can
         # access them by id, which is the index of the landmark in this list
-
-        # we will use the middle of the table to generate the landmark list
-        loc = (Vec2(5,5) + Vec2(6,7)) * 0.5
-
         # collect all possible landmarks
         self.landmarks = []
         for scene_lmk in self.scene.landmarks.itervalues():

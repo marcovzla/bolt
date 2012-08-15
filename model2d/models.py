@@ -135,6 +135,23 @@ class Word(Base):
             q = q.filter(Production.relation==rel)
 
         return q
+        
+    @classmethod
+    def delete_words(cls, limit, pos, word, lmk=None, rel=None):
+        q = cls.query.join(Production)
+
+        if pos is not None:
+            q = q.filter(Word.pos==pos)
+
+        if lmk is not None:
+            q = q.filter(Production.landmark==lmk)
+
+        if rel is not None:
+            q = q.filter(Production.relation==rel)
+
+        q.filter(Word.word==word)
+
+        return q.limit(limit).delete()
 
 class Bigram(Base):
     id = Column(Integer, primary_key=True)
@@ -226,6 +243,26 @@ class Production(Base):
                   reset_joinpoint()
         
         return q
+        
+    @classmethod
+    def delete_productions(cls, limit, rhs, lhs=None, parent=None, lmk=None, rel=None):
+        q = cls.query
+
+        if lhs is not None:
+            q = q.filter(Production.lhs==lhs)
+        
+        if lmk is not None:
+            q = q.filter(Production.landmark==lmk)
+        
+        if rel is not None:
+            q = q.filter(Production.relation==rel)
+        
+        if parent is not None:
+            q = q.join(Production.parent, aliased=True).\
+                  filter(Production.lhs==parent).\
+                  reset_joinpoint()
+        
+        return q.limit(limit).delete()
 
 class WordCPT(Base):
     id = Column(Integer, primary_key=True)
