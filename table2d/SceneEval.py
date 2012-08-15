@@ -44,7 +44,7 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,11,Fals
         for cluster in clusterCandidates[1]:
 
             innerObjects = []
-            for id in cluster[1]:
+            for id in cluster:
                 for x in inputObjectSet:
                     if x.id == id:
                         innerObjects.append(x)
@@ -54,7 +54,7 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,11,Fals
             
         #remove core clusters
         for cluster in clusterCandidates[0]:
-            for id in cluster[1]:
+            for id in cluster:
                 for x in reducedObjectSet:
                     if x.id == id:
                         reducedObjectSet.remove(x)
