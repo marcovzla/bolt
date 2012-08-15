@@ -66,8 +66,8 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,11,Fals
     for i in allCandidates:
         groupDictionary[i.uuid]=i
     evali = bundleSearch(cluster_util.totuple(inputObjectSet), allCandidates, params.allow_intersection, params.beam_width)   
+    #find the things in evali that aren't in the dictionary ,and make a singleton group out of them, and add it to the output
     output = map(lambda x: groupDictionary.get(x),evali)
-    print output
     return output
     
 
@@ -163,6 +163,7 @@ def bundleSearch(scene, groups, intersection = 0,beamwidth=10):
     print "number of groups:",len(groups)
     expanded = 0
     singletonCost = 1
+
     for i in scene:
         groups.append(cluster_util.SingletonBundle([i[0]],singletonCost))
         
@@ -176,7 +177,7 @@ def bundleSearch(scene, groups, intersection = 0,beamwidth=10):
         if node.getState() >= frozenset(map(lambda x:x[0],scene)):
             path = node.traceback()
             print "scene evaluation expanded",expanded,"nodes with beam width of ",beamwidth
-            return path
+            break
         explored.add(node.state)
         successors = node.getSuccessors(scene,groups)
         successors.sort(key= lambda s: s.gainratio,reverse=True)
@@ -186,7 +187,8 @@ def bundleSearch(scene, groups, intersection = 0,beamwidth=10):
                 frontier.push(child, child.cost)
             elif frontier.contains(child.state) and frontier.pathCost(child.state) > child.cost:
                 
-                frontier.push(child,child.cost)  
+                frontier.push(child,child.cost)        
+    return path
     
 class Node:
     def __init__(self, state, parent, action, cost,qCost):
