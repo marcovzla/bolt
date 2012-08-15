@@ -67,6 +67,7 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,11,Fals
         groupDictionary[i.uuid]=i
     evali = bundleSearch(cluster_util.totuple(inputObjectSet), allCandidates, params.allow_intersection, params.beam_width)   
     output = map(lambda x: groupDictionary.get(x),evali)
+    print output
     return output
     
 

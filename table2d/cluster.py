@@ -3,7 +3,6 @@ Created on Jul 5, 2012
 
 @author: colinwinslow
 '''
-print __doc__
 
 import numpy as np
 
@@ -68,5 +67,4 @@ def dbscan(data):
         except:
             fringedict[int(i[0])]=[]
             fringedict[int(i[0])].append(i[1])
-    print coredict,fringedict
     return (coredict,fringedict)
