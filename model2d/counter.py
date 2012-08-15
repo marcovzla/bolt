@@ -84,6 +84,7 @@ if __name__ == '__main__':
         # sample `args.iterations` times for each sentence
         for _ in xrange(args.iterations):
             lmk, rel = get_meaning(loc, num_ancestors)
+            lmk = lmk[0]
 
             if args.verbose:
                 print 'utterance:', repr(sentence)

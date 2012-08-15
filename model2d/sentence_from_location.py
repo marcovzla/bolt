@@ -21,9 +21,8 @@ NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
 def get_expansion(lhs, parent=None, lmk=None, rel=None):
     p_db = Production.get_productions(lhs=lhs, parent=parent,
                                       lmk=lmk_id(lmk), rel=rel_type(rel))
-
     counter = {}
-    for prod in p_db:
+    for prod in p_db.all():
         if prod in counter: counter[prod] += 1
         else: counter[prod] = 1
 

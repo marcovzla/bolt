@@ -95,7 +95,7 @@ class ModelScene(object):
         """gets a location and returns a landmark and a relation
         that can be used to describe the given location"""
         landmarks = self.landmarks
-        
+
         if num_ancestors is not None:
             landmarks = [l for l in landmarks if l.get_ancestor_count() == num_ancestors]
 
