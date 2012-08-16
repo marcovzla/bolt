@@ -88,16 +88,16 @@ if __name__ == '__main__':
     # f = open('scene.pickle','rb')
     # scene = pickle.load(f)
 
-    perspectives = [ Vec2(5.5,4.5), Vec2(6.5,6.0)]
+    #perspectives = [ Vec2(5.5,4.5), Vec2(6.5,6.0)]
     #speaker.talk_to_baby(scene, perspectives, how_many_each=10)
 
 
-    dozen = 12
-    couple = 1
+    dozen = 5000
+    couple = 2
     for i in range(couple * dozen):
         location = Landmark( 'point', PointRepresentation(Vec2(random()*0.8-0.4,random()*0.6+0.4)), None, Landmark.POINT)
         trajector = location#obj2
-        speaker.describe(trajector, scene, True, 2)
+        speaker.describe(trajector, scene, False, 1)
     # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
     # speaker.demo(location, scene)
     # all_desc = speaker.get_all_descriptions(location, scene, 1)

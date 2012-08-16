@@ -59,7 +59,7 @@ class Speaker(object):
         # print '   ', sampled_relation, sr_prob, sr_ent
         sampled_relation = sampled_relation( head_on, sampled_landmark, trajector )
 
-        description = str(trajector) + '; ' + language_generator.describe(head_on, trajector, sampled_landmark, sampled_relation, delimit_chunks)
+        description = str(trajector.representation.middle) + '; ' + language_generator.describe(head_on, trajector, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
         if visualize: self.visualize(scene, trajector, head_on, sampled_landmark, sampled_relation, description, 0.01)
