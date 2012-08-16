@@ -109,12 +109,27 @@ def poly_to_poly_distance(poly1, poly2):
     return min(dists)
 
 
+class Color(object):
+    RED = 'RED'
+    GREEN = 'GREEN'
+    PURPLE = 'PURPLE'
+    BLUE = 'BLUE'
+    PINK = 'PINK'
+    ORANGE = 'ORANGE'
+    YELLOW = 'YELLOW'
+    BLACK = 'BLACK'
+    WHITE = 'WHITE'
 
-class Landmark(object):
+
+class ObjectClass(object):
     TABLE = 'TABLE'
     CHAIR = 'CHAIR'
     CUP = 'CUP'
     BOTTLE = 'BOTTLE'
+    PRISM= 'PRISM'
+
+
+class Landmark(object):
     EDGE = 'EDGE'
     CORNER = 'CORNER'
     MIDDLE = 'MIDDLE'
@@ -124,11 +139,12 @@ class Landmark(object):
     LINE = 'LINE'
     POINT = 'POINT'
 
-    def __init__(self, name, representation, parent, object_class):
+    def __init__(self, name, representation, parent, object_class=None, color=None):
         self.name = name
         self.representation = representation
         self.parent = parent
         self.object_class = object_class
+        self.color = color
         self.uuid = uuid4()
 
         self.representation.parent_landmark = self
@@ -245,7 +261,7 @@ class PointRepresentation(AbstractRepresentation):
             return geo.distance_to(self.location)
 
     def contains(self, other):
-        ''' If PointRepresentation return True if approx. equal. 
+        ''' If PointRepresentation return True if approx. equal.
             Return False if any other representation. '''
         if other.num_dim > self.num_dim: return False
         return self.location.almost_equals(other.location)
@@ -317,6 +333,8 @@ class CircleRepresentation(AbstractRepresentation):
         self.circ = circ
         self.num_dim = 2
         self.middle = circ.center
+        self.alt_representations = [PointRepresentation(self.middle, self)]
+
         self.landmarks = {
             'middle': Landmark('middle', PointRepresentation(self.middle), self, Landmark.MIDDLE)
         }

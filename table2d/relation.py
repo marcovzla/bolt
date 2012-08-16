@@ -1,12 +1,9 @@
 from random import choice
-from numpy import array, random, seterr
+from numpy import array, random
 from scipy.stats import norm
 from planar import Vec2, Affine
 from planar.line import LineSegment, Ray
 from landmark import PointRepresentation
-from math import isnan
-
-seterr(all='raise')
 
 class Relation(object):
     def __init__(self, perspective, landmark, trajector):
@@ -33,15 +30,15 @@ class Measurement(object):
 
     def __init__(self, distance, required=True, distance_class=None, degree_class=None):
         self.distance_classes = {
-            Measurement.FAR: (0.9, 0.05, 1),
-            Measurement.NEAR: (0.3, 0.05, -1)
+            Measurement.FAR: (0.55, 0.05, 1),
+            Measurement.NEAR: (0.15, 0.05, -1)
         }
-
-        if not required:
-            self.distance_classes[Measurement.NONE] = (-100, 0.05, 1)
 
         if distance_class is not None:
             self.distance_classes = { distance_class: self.distance_classes[distance_class] }
+
+        if not required:
+            self.distance_classes[Measurement.NONE] = (-100, 0.05, 1)
 
         self.degree_classes = {
             Degree.NONE: 1,
@@ -131,16 +128,6 @@ class NextToRelation(VeryCloseDistanceRelation):
         super(NextToRelation, self).__init__(perspective, landmark, trajector)
 
 
-class AtRelation(VeryCloseDistanceRelation):
-    def __init__(self, perspective, landmark, trajector):
-        super(AtRelation, self).__init__(perspective, landmark, trajector)
-
-
-class ByRelation(VeryCloseDistanceRelation):
-    def __init__(self, perspective, landmark, trajector):
-        super(ByRelation, self).__init__(perspective, landmark, trajector)
-
-
 class ContainmentRelation(Relation):
     def __init__(self, perspective, landmark, trajector):
         super(ContainmentRelation, self).__init__(perspective, landmark, trajector)
@@ -152,11 +139,6 @@ class ContainmentRelation(Relation):
 class OnRelation(ContainmentRelation):
     def __init__(self, perspective, landmark, trajector):
         super(OnRelation, self).__init__(perspective, landmark, trajector)
-
-
-class InRelation(ContainmentRelation):
-    def __init__(self, perspective, landmark, trajector):
-        super(InRelation, self).__init__(perspective, landmark, trajector)
 
 
 class OrientationRelation(Relation):
@@ -188,7 +170,7 @@ class OrientationRelation(Relation):
         self.projected = self.ori_ray.line.project(trajector.representation.middle)
 
         self.distance = self.ori_ray.start.distance_to(self.projected)
-        self.measurement = Measurement(self.distance, required=False)
+        self.measurement = Measurement(self.distance, required=False, distance_class=Measurement.FAR)
 
     def is_applicable(self):
         if self.ori_ray.contains_point(self.projected) and not \
@@ -220,8 +202,8 @@ class RightRelation(OrientationRelation):
 
 class DistanceRelationSet(RelationSet):
 
-    epsilon = 0.000001
-    relations = [FromRelation, ToRelation, NextToRelation, AtRelation, ByRelation]
+    epsilon = 1e-6
+    relations = [FromRelation, ToRelation, NextToRelation]
 
     @classmethod
     def sample_landmark(class_, landmarks, trajector):
@@ -249,7 +231,7 @@ class DistanceRelationSet(RelationSet):
 
 class ContainmentRelationSet(RelationSet):
 
-    relations = [OnRelation, InRelation]
+    relations = [OnRelation]
 
     @classmethod
     def sample_landmark(class_,landmarks, trajector):

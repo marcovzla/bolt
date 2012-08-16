@@ -1,17 +1,26 @@
 from relation import *
 from random import choice
-from planar.line import Line
-from landmark import Landmark
+from landmark import Landmark, ObjectClass, Color
 
 
 # point_words = ['bottle', 'cup', 'computer', 'laptop', 'keyboard', 'book', 'box', 'monitor',
 #                'disc', 'CD', 'camera', 'lens', 'motor', 'screwdriver', 'pen', 'pencil']
 
 class_to_words = {
-    Landmark.TABLE:    {'N' : ['table', 'table surface']},
-    Landmark.CHAIR:    {'N' : ['chair']},
-    Landmark.CUP:      {'N' : ['cup']},
-    Landmark.BOTTLE:   {'N' : ['bottle']},
+    ObjectClass.TABLE:    {'N' : ['table']},
+    ObjectClass.CHAIR:    {'N' : ['chair']},
+    ObjectClass.CUP:      {'N' : ['cup']},
+    ObjectClass.BOTTLE:   {'N' : ['bottle']},
+    ObjectClass.PRISM:    {'N' : ['prism', 'triangle']},
+    Color.RED:            {'A' : ['red']},
+    Color.GREEN:          {'A' : ['green']},
+    Color.PURPLE:         {'A' : ['purple']},
+    Color.BLUE:           {'A' : ['blue']},
+    Color.PINK:           {'A' : ['pink']},
+    Color.ORANGE:         {'A' : ['orange']},
+    Color.YELLOW:         {'A' : ['yellow']},
+    Color.BLACK:          {'A' : ['black']},
+    Color.WHITE:          {'A' : ['white']},
     Landmark.EDGE:     {'N' : ['edge']},
     Landmark.CORNER:   {'N' : ['corner']},
     Landmark.MIDDLE:   {'N' : ['middle']},
@@ -22,11 +31,8 @@ class_to_words = {
     Landmark.POINT:    {'N' : ['point']},
     FromRelation:      {'P' : ['from']},
     ToRelation:        {'P' : ['to']},
-    NextToRelation:    {'P' : ['next to']},
-    AtRelation:        {'P' : ['at']},
-    ByRelation:        {'P' : ['by']},
+    NextToRelation:    {'P' : ['next to', 'at', 'by']},
     OnRelation:        {'P' : ['on']},
-    InRelation:        {'P' : ['in']},
     InFrontRelation:   {'P' : ['in front of'], 'A' : ['front', 'near']},
     BehindRelation:    {'P' : ['behind'], 'A' : ['back', 'far']},
     LeftRelation:      {'P' : ['to the left of'], 'A' : ['left']},
@@ -40,11 +46,11 @@ class_to_words = {
 }
 
 phrase_to_class = {
-    'table':    Landmark.TABLE,
-    'table surface':    Landmark.TABLE,
-    'chair':    Landmark.CHAIR,
-    'cup':  Landmark.CUP,
-    'bottle':   Landmark.BOTTLE,
+    'table':    ObjectClass.TABLE,
+    'table surface':    ObjectClass.TABLE,
+    'chair':    ObjectClass.CHAIR,
+    'cup':  ObjectClass.CUP,
+    'bottle':   ObjectClass.BOTTLE,
     'edge': Landmark.EDGE,
     'corner':   Landmark.CORNER,
     'middle':   Landmark.MIDDLE,
@@ -55,10 +61,9 @@ phrase_to_class = {
     'from': FromRelation,
     'to':   ToRelation,
     'next to':  NextToRelation,
-    'at':   AtRelation,
-    'by':   ByRelation,
+    'at':  NextToRelation,
+    'by':  NextToRelation,
     'on':   OnRelation,
-    'in':   InRelation,
     'in front of':  InFrontRelation,
     'front':    InFrontRelation,
     'near': InFrontRelation,
@@ -83,7 +88,8 @@ def get_landmark_description(perspective, landmark, delimit_chunks=False):
 
     for option in landmark.ori_relations:
         desc += choice( class_to_words[type(option)]['A'] ) + (' * ' if delimit_chunks else ' ')
-    desc += noun
+
+    desc += (choice(class_to_words[landmark.color]['A']) + ' ' if landmark.color else '') + noun
 
     if landmark.parent and landmark.parent.parent_landmark:
         p_desc = get_landmark_description(perspective, landmark.parent.parent_landmark)
@@ -103,8 +109,9 @@ def get_relation_description(relation, delimit_chunks=False):
     return desc + choice(class_to_words[type(relation)]['P']) + (' * ' if delimit_chunks else ' ')
 
 def describe(perspective, trajector, landmark, relation, delimit_chunks=False):
-    return 'There is a ' + \
-           choice(class_to_words[trajector.object_class]['N']) + \
+    return 'The ' + \
+           (choice(class_to_words[trajector.color]['A']) + ' ' if trajector.color else '') + \
+           choice(class_to_words[trajector.object_class]['N']) + ' is' + \
            (' * ' if delimit_chunks else ' ') + \
            get_relation_description(relation, delimit_chunks) + \
            get_landmark_description(perspective, landmark, delimit_chunks)
