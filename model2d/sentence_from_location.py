@@ -48,9 +48,13 @@ def get_words(expn, parent, lmk=None, rel=None):
 
 
 def generate_sentence(loc, consistent):
+    # get meaning for location
+    lmk, rel = get_meaning(loc=loc)
+    print m2s(lmk, rel)
+    meaning1 = m2s(lmk, rel)
+
     while True:
-        lmk, rel = get_meaning(loc=loc)
-        print m2s(lmk, rel)
+        # generate sentence
         rel_exp = get_expansion('RELATION', rel=rel)
         lmk_exp = get_expansion('LANDMARK-PHRASE', lmk=lmk)
         rel_words = get_words(rel_exp, 'RELATION', rel=rel)
@@ -58,13 +62,28 @@ def generate_sentence(loc, consistent):
         sentence = ' '.join(rel_words + lmk_words)
 
         if consistent:
-            meaning1 = m2s(lmk,rel)
             # get the most likely meaning for the generated sentence
-            posteriors = get_sentence_posteriors(sentence)
-            meaning2 = max(posteriors, key=itemgetter(1))[0]
-            # is this what we are trying to say?
-            if meaning1 != meaning2:
+            try:
+                posteriors = get_sentence_posteriors(sentence, iterations=10,
+                                                     extra_meaning=(lmk,rel))
+            except:
+                print 'try again ...'
                 continue
+
+            meaning2 = max(posteriors, key=itemgetter(1))[0]
+
+            # is the original meaning the best one?
+            if meaning1 != meaning2:
+                print
+                print 'sentence:', sentence
+                print 'original:', meaning1
+                print 'interpreted:', meaning2
+                print 'try again ...'
+                print
+                continue
+
+            for m,p in sorted(posteriors, key=itemgetter(1)):
+                print m, p
 
         return sentence
 
