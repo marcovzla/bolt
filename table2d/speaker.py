@@ -62,7 +62,7 @@ class Speaker(object):
         description = str(trajector) + '; ' + language_generator.describe(head_on, trajector, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
-        if visualize: self.visualize(sampled_scene, trajector, head_on, sampled_landmark, sampled_relation, description, 0.1)
+        if visualize: self.visualize(scene, trajector, head_on, sampled_landmark, sampled_relation, description, 0.1)
 
     def communicate(self, scene, visualize=False, max_level=-1, delimit_chunks=False):
         all_landmarks = []
@@ -86,8 +86,8 @@ class Speaker(object):
         self.set_orientations(sampled_landmark, perspective)
 
         trajector = self.sample_point_trajector( scene.landmarks['table'].representation.get_geometry().bounding_box,
-                                                 sampled_relation, 
-                                                 perspective, 
+                                                 sampled_relation,
+                                                 perspective,
                                                  sampled_landmark)
 
         print sampled_landmark, self.get_landmark_probability( sampled_landmark, all_landmarks, trajector )
@@ -103,17 +103,18 @@ class Speaker(object):
         options = set()
         if landmark.parent and landmark.parent.parent_landmark:
             middle_lmk = Landmark('', PointRepresentation(landmark.parent.middle), landmark.parent, None)
-            options = OrientationRelationSet.get_applicable_relations(perspective, 
-                                                                      middle_lmk, 
-                                                                      Landmark( None, 
+            options = OrientationRelationSet.get_applicable_relations(perspective,
+                                                                      middle_lmk,
+                                                                      Landmark( None,
                                                                                 PointRepresentation(landmark.representation.middle),
-                                                                                None, None), 
+                                                                                None, None),
                                                                       use_distance=False)
 
             par_lmk = landmark.parent.parent_landmark
             if par_lmk.parent and par_lmk.parent.parent_landmark:
                 par_middle_lmk = Landmark('', PointRepresentation(par_lmk.parent.middle), par_lmk.parent, None)
-                par_options = OrientationRelationSet.get_applicable_relations(perspective, par_middle_lmk, PointRepresentation(par_lmk.representation.middle), use_distance=False)
+                trajector = Landmark('', PointRepresentation(par_lmk.representation.middle), None, None)
+                par_options = OrientationRelationSet.get_applicable_relations(perspective, par_middle_lmk, trajector, use_distance=False)
             else:
                 par_options = []
 

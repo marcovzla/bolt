@@ -32,13 +32,11 @@ class_to_words = {
     LeftRelation:      {'P' : ['to the left of'], 'A' : ['left']},
     RightRelation:     {'P' : ['to the right of'], 'A' : ['right']},
     Degree.NONE:       {'R' : ['']},
-    # Degree.NOT_VERY:   {'R' : ['not very']},
     Degree.SOMEWHAT:   {'R' : ['somewhat']},
     Degree.VERY:       {'R' : ['very']},
     Measurement.NONE:  {'A' : ['']},
-    Measurement.CLOSE: {'A' : ['close']},
     Measurement.FAR:   {'A' : ['far']},
-    Measurement.NEAR:  {'A' : ['near']},
+    Measurement.NEAR:  {'A' : ['near', 'close']},
 }
 
 phrase_to_class = {
@@ -73,7 +71,7 @@ phrase_to_class = {
     'right':    RightRelation,
     'somewhat': Degree.SOMEWHAT,
     'very': Degree.VERY,
-    'close':    Measurement.CLOSE,
+    'close':    Measurement.NEAR,
     'of':   'OF',
     'the':  'DT',
 

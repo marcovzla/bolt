@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 from speaker import Speaker
 from planar import Vec2, BoundingBox
-from landmark import GroupLineRepresentation, RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
+from landmark import GroupLineRepresentation, PointRepresentation, RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
 from random import random
 import pickle
 import adapter
@@ -68,8 +68,8 @@ if __name__ == '__main__':
     dozen = 12
     couple = 1
     for i in range(couple * dozen):
-        # location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-        trajector = obj2
+        location = Landmark( 'point', PointRepresentation(Vec2(random()+5,random()*2+5)), None, Landmark.POINT)
+        trajector = location#obj2
         speaker.describe(trajector, scene, False, 2)
     # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
     # speaker.demo(location, scene)

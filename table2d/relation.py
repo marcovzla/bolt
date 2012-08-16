@@ -1,10 +1,12 @@
 from random import choice
-from numpy import array, random
+from numpy import array, random, seterr
 from scipy.stats import norm
 from planar import Vec2, Affine
 from planar.line import LineSegment, Ray
 from landmark import PointRepresentation
+from math import isnan
 
+seterr(all='raise')
 
 class Relation(object):
     def __init__(self, perspective, landmark, trajector):
@@ -19,34 +21,36 @@ class RelationSet(object):
 
 
 class Degree(object):
-    NONE = 2001
-    # NOT_VERY = 2002
-    SOMEWHAT = 2003
-    VERY = 2004
+    NONE     = 'DEGREE NONE'
+    SOMEWHAT = 'DEGREE SOMEWHAT'
+    VERY     = 'DEGREE VERY'
 
 
 class Measurement(object):
-    NONE = 1001
-    FAR = 1002
-    CLOSE = 1003
-    NEAR = 1004
+    NONE = 'MEASUREMENT NONE'
+    FAR  = 'MEASUREMENT FAR'
+    NEAR = 'MEASUREMENT NEAR'
 
-    def __init__(self, distance, required=True):
-        self.distance_class = {
+    def __init__(self, distance, required=True, distance_class=None, degree_class=None):
+        self.distance_classes = {
             Measurement.FAR: (0.9, 0.05, 1),
-            Measurement.CLOSE: (0.25, 0.05, -1),
-            Measurement.NEAR: (0.4, 0.05, -1)
+            Measurement.NEAR: (0.3, 0.05, -1)
         }
 
         if not required:
-            self.distance_class[Measurement.NONE] = (-100, 0.05, 1)
+            self.distance_classes[Measurement.NONE] = (-100, 0.05, 1)
 
-        self.degree_class = {
+        if distance_class is not None:
+            self.distance_classes = { distance_class: self.distance_classes[distance_class] }
+
+        self.degree_classes = {
             Degree.NONE: 1,
-            # Degree.NOT_VERY: 0.6,
             Degree.SOMEWHAT: 0.75,
             Degree.VERY: 1.5
         }
+
+        if degree_class is not None:
+            self.degree_classes = { degree_class: self.degree_classes[degree_class] }
 
         self.required = required
         self.distance = distance
@@ -64,24 +68,26 @@ class Measurement(object):
         if distance_class is None:
             distance_class = self.best_distance_class
 
-        mu,std,sign = self.distance_class[distance_class]
-        mult = self.degree_class[degree_class]
+        mu,std,sign = self.distance_classes[distance_class]
+        mult = self.degree_classes[degree_class]
 
         p = norm.cdf(self.distance, mu * (mult ** sign), std)
         if sign < 0: p = 1 - p
         return p
 
     def evaluate_all(self):
+        epsilon = 1e-6
         probs = []
 
-        for dist in self.distance_class:
-            for degree in self.degree_class:
-                p = self.is_applicable(degree, dist)
+        for dist in self.distance_classes:
+            for degree in self.degree_classes:
+                p = self.is_applicable(degree, dist) + epsilon
                 probs.append([p, degree, dist])
 
         ps, degrees, dists = zip(*probs)
         ps = array(ps)
         ps /= sum(ps)
+
         index = ps.cumsum().searchsorted( random.sample(1) )[0]
         return probs[index]
 
@@ -105,21 +111,19 @@ class DistanceRelation(Relation):
 class FromRelation(DistanceRelation):
     def __init__(self, perspective, landmark, trajector):
         super(FromRelation, self).__init__(perspective, landmark, trajector)
+        self.measurement = Measurement(distance=self.distance, distance_class=Measurement.FAR)
 
 
 class ToRelation(DistanceRelation):
     def __init__(self, perspective, landmark, trajector):
         super(ToRelation, self).__init__(perspective, landmark, trajector)
+        self.measurement = Measurement(distance=self.distance, distance_class=Measurement.NEAR)
 
 
 class VeryCloseDistanceRelation(DistanceRelation):
     def __init__(self, perspective, landmark, trajector):
         super(VeryCloseDistanceRelation, self).__init__(perspective, landmark, trajector)
-        self.measurement.best_degree_class = Degree.VERY
-        self.measurement.best_distance_class = Measurement.CLOSE
-
-    def is_applicable(self):
-        return super(VeryCloseDistanceRelation,self).is_applicable() and self.measurement.is_applicable()
+        self.measurement = Measurement(distance=self.distance, distance_class=Measurement.NEAR, degree_class=Degree.VERY)
 
 
 class NextToRelation(VeryCloseDistanceRelation):
