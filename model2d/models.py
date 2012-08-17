@@ -136,6 +136,23 @@ class Word(Base):
 
         return q
 
+class CWord(Base):
+    id = Column(Integer, primary_key=True)
+
+    word = Column(String, nullable=False)
+    pos = Column(String, nullable=False)
+
+    landmark = Column(Integer)
+    landmark_class = Column(Integer)
+    relation = Column(String)
+    relation_distance_class = Column(Integer)
+    relation_degree_class = Column(Integer)
+
+    count = Column(Float, nullable=False, default=0)
+
+    def __unicode__(self):
+        return u'%s (%s)' % (self.word, self.count)
+
 class Bigram(Base):
     id = Column(Integer, primary_key=True)
 
@@ -226,6 +243,25 @@ class Production(Base):
                   reset_joinpoint()
         
         return q
+
+class CProduction(Base):
+    id = Column(Integer, primary_key=True)
+
+    lhs = Column(String, nullable=False)
+    rhs = Column(String, nullable=False)
+    parent = Column(String)
+
+    # semantic content
+    landmark = Column(Integer)
+    landmark_class = Column(Integer)
+    relation = Column(String)
+    relation_distance_class = Column(Integer)
+    relation_degree_class = Column(Integer)
+
+    count = Column(Float, nullable=False, default=0)
+
+    def __unicode__(self):
+        return u'%s -> %s (%s)' % (self.lhs, self.rhs, self.count)
 
 class WordCPT(Base):
     id = Column(Integer, primary_key=True)

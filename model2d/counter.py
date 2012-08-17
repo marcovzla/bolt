@@ -5,12 +5,16 @@ from __future__ import division
 
 import csv
 
-from models import Location, Word, Production, Bigram, Trigram, session
+from models import (Location, Word, Production, Bigram, Trigram,
+                    CWord, CProduction, session)
 from utils import parent_landmark, count_lmk_phrases, get_meaning, rel_type, lmk_id
 
 from table2d.landmark import Landmark
 
 from nltk.tree import ParentedTree
+
+from sqlalchemy import func
+from sqlalchemy.orm import aliased
 
 
 
@@ -101,3 +105,71 @@ if __name__ == '__main__':
             Bigram.make_bigrams(location.words)
             Trigram.make_trigrams(location.words)
             session.commit()
+
+
+
+    # count words
+    parent = aliased(Production)
+    qry = session.query(Word.word, Word.pos,
+                        parent.landmark, parent.landmark_class,
+                        parent.relation, parent.relation_distance_class,
+                        parent.relation_degree_class, func.count(Word.id)).\
+                  join(parent, Word.parent).\
+                  group_by(Word.word, Word.pos,
+                           parent.landmark, parent.landmark_class,
+                           parent.relation, parent.relation_distance_class,
+                           parent.relation_degree_class)
+    for row in qry:
+        cw = CWord(word=row[0],
+                   pos=row[1],
+                   landmark=row[2],
+                   landmark_class=row[3],
+                   relation=row[4],
+                   relation_distance_class=row[5],
+                   relation_degree_class=row[6],
+                   count=row[7])
+
+    # count productions with no parent
+    parent = aliased(Production)
+    qry = session.query(Production.lhs, Production.rhs,
+                        Production.landmark, Production.landmark_class,
+                        Production.relation, Production.relation_distance_class,
+                        Production.relation_degree_class, func.count(Production.id)).\
+                  filter_by(parent=None).\
+                  group_by(Production.lhs, Production.rhs,
+                           Production.landmark, Production.landmark_class,
+                           Production.relation, Production.relation_distance_class,
+                           Production.relation_degree_class)
+    for row in qry:
+        cp = CProduction(lhs=row[0],
+                         rhs=row[1],
+                         landmark=row[2],
+                         landmark_class=row[3],
+                         relation=row[4],
+                         relation_distance_class=row[5],
+                         relation_degree_class=row[6],
+                         count=row[7])
+
+    # count productions with parent
+    parent = aliased(Production)
+    qry = session.query(Production.lhs, Production.rhs,
+                        parent.lhs, Production.landmark, Production.landmark_class,
+                        Production.relation, Production.relation_distance_class,
+                        Production.relation_degree_class, func.count(Production.id)).\
+                  join(parent, Production.parent).\
+                  group_by(Production.lhs, Production.rhs,
+                           parent.lhs, Production.landmark, Production.landmark_class,
+                           Production.relation, Production.relation_distance_class,
+                           Production.relation_degree_class)
+    for row in qry:
+        cp = CProduction(lhs=row[0],
+                         rhs=row[1],
+                         parent=row[2],
+                         landmark=row[3],
+                         landmark_class=row[4],
+                         relation=row[5],
+                         relation_distance_class=row[6],
+                         relation_degree_class=row[7],
+                         count=row[8])
+
+    session.commit()
