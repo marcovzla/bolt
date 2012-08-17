@@ -74,7 +74,7 @@ def get_tree_prob(tree, lmk=None, rel=None):
 
 
 
-def get_sentence_posteriors(sentence, iterations=1):
+def get_sentence_posteriors(sentence, iterations=1, extra_meaning=None):
     probs = []
     meanings = []
 
@@ -87,9 +87,13 @@ def get_sentence_posteriors(sentence, iterations=1):
 
     for _ in xrange(iterations):
         meaning = get_meaning(num_ancestors=num_ancestors)
-        lmk, rel = meaning
         probs.append(get_tree_prob(t, *meaning))
-        meanings.append(m2s(lmk,rel))
+        meanings.append(m2s(*meaning))
+        print '.'
+
+    if extra_meaning:
+        probs.append(get_tree_prob(t, *extra_meaning))
+        meanings.append(m2s(*extra_meaning))
         print '.'
 
     probs = np.array(probs) / sum(probs)

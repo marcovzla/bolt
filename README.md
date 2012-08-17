@@ -15,8 +15,8 @@ languages.
     git submodule update
     cd bllip-parser
     make
-    cd model2d
+    cd ../model2d
     curl -O http://nlp.stanford.edu/software/stanford-tregex-2012-05-22.tgz
     tar xzvf stanford-tregex-2012-05-22.tgz
     mv stanford-tregex-2012-05-22 stanford-tregex
-    cd ..
+    ./pipeline.sh
