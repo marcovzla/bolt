@@ -1,7 +1,16 @@
 #!/usr/bin/env python
 from speaker import Speaker
 from planar import Vec2, BoundingBox
-from landmark import GroupLineRepresentation, RectangleRepresentation, SurfaceRepresentation, Scene, Landmark
+from landmark import (GroupLineRepresentation,
+                      PointRepresentation,
+                      RectangleRepresentation,
+                      Circle,
+                      CircleRepresentation,
+                      SurfaceRepresentation,
+                      Scene,
+                      Landmark,
+                      ObjectClass,
+                      Color)
 from random import random
 import pickle
 import adapter
@@ -18,34 +27,52 @@ if __name__ == '__main__':
     # print 'Distance from POI to Start landmark is %f' % l.landmarks['start'].distance_to(poi)
     # print 'Distance from POI to End landmark is %f' % l.landmarks['end'].distance_to(poi)
     # print 'Distance from POI to Mid landmark is %f' % l.landmarks['mid'].distance_to(poi)
+    # cups 7 cm in diameter
+    # triangles are 6 by 10 cm
 
-    speaker = Speaker(Vec2(5.5,4.5))
+    speaker = Speaker(Vec2(0,0))
     scene = Scene(3)
 
     table = Landmark('table',
-                 RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(6,7)])),
-                 None,
-                 Landmark.TABLE)
+                     RectangleRepresentation(rect=BoundingBox([Vec2(-0.4,0.4), Vec2(0.4,1.0)])),
+                     None,
+                     ObjectClass.TABLE)
 
-    obj1 = Landmark('obj1',
-                 RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(5.1,5.1)])),
-                 None,
-                 Landmark.CUP)
+    obj1 = Landmark('green_cup',
+                    RectangleRepresentation(rect=BoundingBox([Vec2(0.05-0.035,0.9-0.035), Vec2(0.05+0.035,0.9+0.035)]), landmarks_to_get=[]),
+                    None,
+                    ObjectClass.CUP,
+                    Color.GREEN)
 
-    obj2 = Landmark('obj2',
-                 RectangleRepresentation(rect=BoundingBox([Vec2(5.5,6), Vec2(5.6,6.1)])),
-                 None,
-                 Landmark.BOTTLE)
+    obj2 = Landmark('blue_cup',
+                    RectangleRepresentation(rect=BoundingBox([Vec2(0.05-0.035,0.7-0.035), Vec2(0.05+0.035,0.7+0.035)]), landmarks_to_get=[]),
+                    None,
+                    ObjectClass.CUP,
+                    Color.BLUE)
 
-    obj3 = Landmark('obj3',
-                 RectangleRepresentation(rect=BoundingBox([Vec2(4.5,4.5), Vec2(4.8,4.8)])),
-                 None,
-                 Landmark.CHAIR)
+    obj3 = Landmark('pink_cup',
+                    RectangleRepresentation(rect=BoundingBox([Vec2(0-0.035,0.55-0.035), Vec2(0+0.035,0.55+0.035)]), landmarks_to_get=[]),
+                    None,
+                    ObjectClass.CUP,
+                    Color.PINK)
+
+    obj4 = Landmark('purple_prism',
+                    RectangleRepresentation(rect=BoundingBox([Vec2(-0.3-0.03,0.7-0.05), Vec2(-0.3+0.03,0.7+0.05)]), landmarks_to_get=[]),
+                    None,
+                    ObjectClass.PRISM,
+                    Color.PURPLE)
+
+    obj5 = Landmark('orange_prism',
+                    RectangleRepresentation(rect=BoundingBox([Vec2(0.3-0.03,0.7-0.05), Vec2(0.3+0.03,0.7+0.05)]), landmarks_to_get=[]),
+                    None,
+                    ObjectClass.PRISM,
+                    Color.ORANGE)
 
     scene.add_landmark(table)
-    scene.add_landmark(obj1)
-    scene.add_landmark(obj2)
-    # scene.add_landmark(obj3)
+
+    for obj in (obj1, obj2, obj3, obj4, obj5):
+        obj.representation.alt_representations = []
+        scene.add_landmark(obj)
 
     # groups = adapter.adapt(scene)
 
@@ -61,22 +88,23 @@ if __name__ == '__main__':
     # f = open('scene.pickle','rb')
     # scene = pickle.load(f)
 
-    perspectives = [ Vec2(5.5,4.5), Vec2(6.5,6.0)]
+    #perspectives = [ Vec2(5.5,4.5), Vec2(6.5,6.0)]
     #speaker.talk_to_baby(scene, perspectives, how_many_each=10)
 
 
-    dozen = 12
-    couple = 1
+    dozen = 5000
+    couple = 2
     for i in range(couple * dozen):
-        location = Vec2(random()+5,random()*2+5)#Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
-        # speaker.describe(location, scene, False, 2)
+        location = Landmark( 'point', PointRepresentation(Vec2(random()*0.8-0.4,random()*0.6+0.4)), None, Landmark.POINT)
+        trajector = location#obj2
+        speaker.describe(trajector, scene, False, 1)
     # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
     # speaker.demo(location, scene)
     # all_desc = speaker.get_all_descriptions(location, scene, 1)
 
 
-    for i in range(couple * dozen):
-        speaker.communicate(scene, False)
+    # for i in range(couple * dozen):
+    #     speaker.communicate(scene, False)
 
     # for desc in all_desc:
     #     print desc

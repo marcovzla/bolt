@@ -2,7 +2,7 @@ from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRel
 from numpy import array, arange, zeros, log, argmin, set_printoptions, random
 from random import choice
 from matplotlib import pyplot as plt
-from landmark import PointRepresentation, LineRepresentation, GroupLineRepresentation, RectangleRepresentation
+from landmark import PointRepresentation, LineRepresentation, GroupLineRepresentation, RectangleRepresentation, Landmark
 from planar import Vec2
 import sys
 from textwrap import wrap
@@ -24,13 +24,19 @@ class Speaker(object):
             print "Not getting head on viewpoint!!!"
             return self.location
 
-    def describe(self, poi, scene, visualize=False, max_level=-1, delimit_chunks=False):
-        scenes = scene.get_child_scenes(poi) + [scene]
+    def describe(self, trajector, scene, visualize=False, max_level=-1, delimit_chunks=False):
+
+        scenes = scene.get_child_scenes(trajector) + [scene]
 
         all_landmarks = []
 
         for s in scenes:
             for scene_lmk in s.landmarks.values():
+
+                # Don't want to use the trajector as landmark
+                if scene_lmk == trajector:
+                    continue
+
                 all_landmarks.append([s, scene_lmk])
 
                 representations = [scene_lmk.representation]
@@ -42,28 +48,22 @@ class Speaker(object):
 
         sceness, landmarks = zip( *all_landmarks )
 
-        sampled_landmark, sl_prob, sl_ent = self.sample_landmark( landmarks, poi )
-        print '   ',sampled_landmark, sl_prob, sl_ent
+        sampled_landmark, sl_prob, sl_ent = self.sample_landmark( landmarks, trajector )
+        # print '   ', sampled_landmark, sl_prob, sl_ent
 
-        # relset = choice([DistanceRelationSet,ContainmentRelationSet, OrientationRelationSet])
-        # index = relset.sample_landmark(landmarks, poi)
-
-        # sampled_scene = sceness[index]
-        # sampled_landmark = landmarks[index]
         head_on = self.get_head_on_viewpoint(sampled_landmark)
-        # self.set_orientations(sampled_landmark, head_on)
-        # sampled_relation = relset.sample_relation(head_on, sampled_landmark, poi)
 
         self.set_orientations(sampled_landmark, head_on)
 
-        sampled_relation, sr_prob, sr_ent = self.sample_relation( poi, scene.get_bounding_box(), head_on, sampled_landmark, step=0.1 )
-        print '   ',sampled_relation, sr_prob, sr_ent
-        sampled_relation = sampled_relation( head_on, sampled_landmark, poi )
+        sampled_relation, sr_prob, sr_ent = self.sample_relation( trajector, scene.get_bounding_box(), head_on, sampled_landmark, step=0.1 )
+        # print '   ', sampled_relation, sr_prob, sr_ent
+        sampled_relation = sampled_relation( head_on, sampled_landmark, trajector )
 
-        description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation, delimit_chunks)
+        description = str(trajector.representation.middle) + '; ' + language_generator.describe(head_on, trajector, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
-        if visualize: self.visualize(sampled_scene, poi, head_on, sampled_landmark, sampled_relation, description, 0.1)
+        if visualize: self.visualize(scene, trajector, head_on, sampled_landmark, sampled_relation, description, 0.01)
+        return description
 
     def communicate(self, scene, visualize=False, max_level=-1, delimit_chunks=False):
         all_landmarks = []
@@ -86,27 +86,36 @@ class Speaker(object):
         perspective = self.get_head_on_viewpoint(sampled_landmark)
         self.set_orientations(sampled_landmark, perspective)
 
-        poi = self.sample_poi(scene.landmarks['table'].representation.get_geometry().bounding_box, sampled_relation, perspective, sampled_landmark)
+        trajector = self.sample_point_trajector( scene.landmarks['table'].representation.get_geometry().bounding_box,
+                                                 sampled_relation,
+                                                 perspective,
+                                                 sampled_landmark)
 
-        print sampled_landmark, self.get_landmark_probability( sampled_landmark, all_landmarks, poi )
-        print sampled_relation, self.get_relation_probability( sampled_relation, poi, scene.get_bounding_box(), perspective, sampled_landmark, step=0.1)
+        print sampled_landmark, self.get_landmark_probability( sampled_landmark, all_landmarks, trajector )
+        print sampled_relation, self.get_relation_probability( sampled_relation, trajector, scene.get_bounding_box(), perspective, sampled_landmark, step=0.1)
 
-        sampled_relation = sampled_relation(perspective, sampled_landmark, poi)
-        description = str(poi) + '; ' + language_generator.describe(perspective, sampled_landmark, sampled_relation, delimit_chunks)
+        sampled_relation = sampled_relation(perspective, sampled_landmark, trajector)
+        description = str(trajector) + '; ' + language_generator.describe(perspective, trajector, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
-        if visualize: self.visualize(scene, poi, perspective, sampled_landmark, sampled_relation, description, 0.1)
+        if visualize: self.visualize(scene, trajector, perspective, sampled_landmark, sampled_relation, description, 0.1)
 
     def set_orientations(self, landmark, perspective):
         options = set()
         if landmark.parent and landmark.parent.parent_landmark:
             middle_lmk = Landmark('', PointRepresentation(landmark.parent.middle), landmark.parent, None)
-            options = OrientationRelationSet.get_applicable_relations(perspective, middle_lmk, landmark.representation.middle, use_distance=False)
+            options = OrientationRelationSet.get_applicable_relations(perspective,
+                                                                      middle_lmk,
+                                                                      Landmark( None,
+                                                                                PointRepresentation(landmark.representation.middle),
+                                                                                None, None),
+                                                                      use_distance=False)
 
             par_lmk = landmark.parent.parent_landmark
             if par_lmk.parent and par_lmk.parent.parent_landmark:
                 par_middle_lmk = Landmark('', PointRepresentation(par_lmk.parent.middle), par_lmk.parent, None)
-                par_options = OrientationRelationSet.get_applicable_relations(perspective, par_middle_lmk, par_lmk.representation.middle, use_distance=False)
+                trajector = Landmark('', PointRepresentation(par_lmk.representation.middle), None, None)
+                par_options = OrientationRelationSet.get_applicable_relations(perspective, par_middle_lmk, trajector, use_distance=False)
             else:
                 par_options = []
 
@@ -138,9 +147,6 @@ class Speaker(object):
 
     def demo(self, poi, scene):
 
-        # Sentence 1
-        # [0.25562221863528939, 1.0, 3.9120230054287899, Scene(3), table, <landmark.RectangleRepresentation>,
-        #    m_surf, <relations.on object at 0x35cb350>, ['on the middle of the table']]
         '''
         sampled_landmark = scene.landmarks['table'].representation.landmarks['ll_corner']
         head_on = self.get_head_on_viewpoint(sampled_landmark)
@@ -151,7 +157,6 @@ class Speaker(object):
         description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation)
         print description
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.1)
-        '''
 
         sampled_landmark = scene.landmarks['obj2'].representation.landmarks['r_edge']
         head_on = self.get_head_on_viewpoint(sampled_landmark)
@@ -162,9 +167,11 @@ class Speaker(object):
         description = str(poi) + '; ' + language_generator.describe(head_on, sampled_landmark, sampled_relation)
         print description
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.1)
+        '''
 
     # broken!
     def get_all_descriptions(self, poi, scene, max_level=-1):
+        '''
         all_desc = []
         scenes = scene.get_child_scenes(poi) + [scene]
         counter = 0
@@ -205,6 +212,7 @@ class Speaker(object):
 
 
         return reversed(sorted(all_desc))
+        '''
 
 
     def get_probabilities_box(self, bounding_box, relation, perspective, landmark, step=0.02):
@@ -216,7 +224,7 @@ class Speaker(object):
 
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
-                p = Vec2(x,y)
+                p = Landmark( None, PointRepresentation( Vec2(x,y) ), None, None )
                 points[j,i] = p
                 rel = relation( perspective, landmark, p )
                 probabilities[j,i] = rel.is_applicable()
@@ -235,16 +243,16 @@ class Speaker(object):
         scene_bb = scene_bb.inflate( Vec2(scene_bb.width*0.5,scene_bb.height*0.5) )
         return self.get_probabilities_box(scene_bb, relation, perspective, landmark, step)
 
-    def evaluate_poi(self, poi, bounding_box, relation, perspective, landmark, step=0.02):
-        probs, points = self.get_probabilities_box(bounding_box, relation, perspective, landmark, step)
-        rel = relation( perspective, landmark, poi )
-        poi_prob = rel.is_applicable()
-        return poi_prob / (probs.sum() + poi_prob) if poi_prob else poi_prob
+    def evaluate_trajector_likelihood(self, trajector, bounding_box, relation, perspective, landmark, step=0.02):
+        probs, _ = self.get_probabilities_box(bounding_box, relation, perspective, landmark, step)
+        rel = relation( perspective, landmark, trajector )
+        trajector_prob = rel.is_applicable()
+        return trajector_prob / (probs.sum() + trajector_prob) if trajector_prob else trajector_prob
 
-    def sample_landmark(self, landmarks, poi):
+    def sample_landmark(self, landmarks, trajector):
         ''' Weight by inverse of distance to landmark center and choose probabilistically  '''
         epsilon = 0.000001
-        distances = array([lmk.representation.middle.distance_to(poi) for lmk in landmarks])
+        distances = array([trajector.distance_to( PointRepresentation(lmk.representation.middle) ) for lmk in landmarks])
         scores = 1.0/(array(distances)**1.5 + epsilon)
         # scores[distances == 0] = 0
         lm_probabilities = scores/sum(scores)
@@ -252,48 +260,60 @@ class Speaker(object):
 
         return landmarks[index], lm_probabilities[index], self.get_entropy(lm_probabilities)
 
-    def get_landmark_probability(self, sampled_landmark, landmarks, poi):
+    def get_landmark_probability(self, sampled_landmark, landmarks, trajector):
         epsilon = 0.000001
-        distances = array([lmk.representation.middle.distance_to(poi) for lmk in landmarks])
+        distances = array([trajector.distance_to( PointRepresentation(lmk.representation.middle) ) for lmk in landmarks])
         scores = 1.0/(array(distances)**1.5 + epsilon)
         # scores[distances == 0] = 0
         lm_probabilities = scores/sum(scores)
         return lm_probabilities[ landmarks.index(sampled_landmark) ], self.get_entropy(lm_probabilities)
 
-    def sample_relation(self, poi, bounding_box, perspective, landmark, step=0.02):
+    def sample_relation(self, trajector, bounding_box, perspective, landmark, step=0.02):
         """
-        Sample a relation given a point of interest and landmark.
+        Sample a relation given a trajector and landmark.
         Evaluate each relation and probabilisticaly choose the one that is likely to
-        generate the poi given a landmark.
+        generate the trajector given a landmark.
         """
         rel_scores = []
         rel_classes = []
-        rels = []
 
-        for s in [DistanceRelationSet, OrientationRelationSet, ContainmentRelationSet]:
+        for s in [DistanceRelationSet, ContainmentRelationSet]:
             for rel in s.relations:
-                rel_scores.append(self.evaluate_poi(poi, bounding_box, rel, perspective, landmark, step))
+                rel_scores.append(self.evaluate_trajector_likelihood(trajector, bounding_box, rel, perspective, landmark, step))
                 rel_classes.append(rel)
 
+        ori_rel_scores = []
+        for rel in OrientationRelationSet.relations:
+            p = self.evaluate_trajector_likelihood(trajector, bounding_box, rel, perspective, landmark, step)
+            if p > 0: ori_rel_scores.append( (p, rel) )
+
+        if len(ori_rel_scores) > 1:
+            assert( len(ori_rel_scores) == 2 )
+
+            dists = []
+            for p,rel in ori_rel_scores:
+                dists.append( [rel(perspective, landmark, trajector).measurement.distance, p, rel] )
+            dists = sorted(dists)
+            dists[0][1] *= dists[0][0] / dists[1][0]
+
+            rel_scores.append(dists[0][1])
+            rel_scores.append(dists[1][1])
+            rel_classes.append(dists[0][2])
+            rel_classes.append(dists[1][2])
+
         rel_scores = array(rel_scores)
-        set_printoptions(threshold='nan')
-        # print 'X',rel_scores
         rel_probabilities = rel_scores/sum(rel_scores)
-        # print 'X',rel_probabilities
         index = rel_probabilities.cumsum().searchsorted( random.sample(1) )[0]
-        # print 'X',index
-        # print 'X',rel_probabilities.cumsum()
 
         return rel_classes[index], rel_probabilities[index], self.get_entropy(rel_probabilities)
 
-    def get_relation_probability(self, sampled_relation, poi, bounding_box, perspective, landmark, step=0.02):
+    def get_relation_probability(self, sampled_relation, trajector, bounding_box, perspective, landmark, step=0.02):
         rel_scores = []
         rel_classes = []
-        rels = []
 
         for s in [DistanceRelationSet, OrientationRelationSet, ContainmentRelationSet]:
             for rel in s.relations:
-                rel_scores.append(self.evaluate_poi(poi, bounding_box, rel, perspective, landmark, step))
+                rel_scores.append(self.evaluate_trajector_likelihood(trajector, bounding_box, rel, perspective, landmark, step))
                 rel_classes.append(rel)
 
         rel_scores = array(rel_scores)
@@ -302,7 +322,7 @@ class Speaker(object):
         rel_probabilities = rel_scores/sum(rel_scores)
         return rel_probabilities[ rel_classes.index(sampled_relation) ], self.get_entropy(rel_probabilities)
 
-    def sample_poi(self, bounding_box, relation, perspective, landmark, step=0.02):
+    def sample_point_trajector(self, bounding_box, relation, perspective, landmark, step=0.02):
         """
         Sample a point of interest given a relation and landmark.
         """
@@ -311,14 +331,14 @@ class Speaker(object):
         probs, points = self.get_probabilities_box(bounding_box, relation, perspective, landmark)
         probs /= probs.sum()
         index = probs.cumsum().searchsorted( random.sample(1) )[0]
-        return points.flatten()[index]
+        return Landmark( 'point', points.flatten()[index], None, Landmark.POINT )
 
     def get_entropy(self, probabilities):
         probabilities += 1e-15
         probabilities = probabilities/sum(probabilities.flatten())
         return -sum( (probabilities * log(probabilities)).flatten() )
 
-    def visualize(self, scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.02):
+    def visualize(self, scene, trajector, head_on, sampled_landmark, sampled_relation, description, step=0.02):
 
         relation = type(sampled_relation)
 
@@ -335,7 +355,7 @@ class Speaker(object):
         probabilities = zeros(  ( len(ys),len(xs) )  )
         for i,x in enumerate(xs):
             for j,y in enumerate(ys):
-                rel = relation( head_on, sampled_landmark, Vec2(x,y) )
+                rel = relation( head_on, sampled_landmark, Landmark('', PointRepresentation(Vec2(x,y)), None, None) )
                 if hasattr(rel, 'measurement'):
                     rel.measurement.best_degree_class = sampled_relation.measurement.best_degree_class
                     rel.measurement.best_distance_class = sampled_relation.measurement.best_distance_class
@@ -348,7 +368,7 @@ class Speaker(object):
         x = array( [list(xs-step*0.5)]*len(ys) )
         y = array( [list(ys-step*0.5)]*len(xs) ).T
 
-        print self.get_entropy(probabilities)
+        #print self.get_entropy(probabilities)
         plt.pcolor(x, y, probabilities, cmap = 'jet', edgecolors='none', alpha=0.7)
         plt.colorbar()
 
@@ -368,9 +388,27 @@ class Speaker(object):
                  self.location.y,
                  'bx',markeredgewidth=2)
 
+        traj_rep = trajector.representation
+        if isinstance(traj_rep, GroupLineRepresentation):
+            xs = [traj_rep.line.start.x, traj_rep.line.end.x]
+            ys = [traj_rep.line.start.y, traj_rep.line.end.y]
+            plt.fill(xs,ys,facecolor='none',linewidth=2)
+        elif isinstance(traj_rep, RectangleRepresentation):
+            rect = traj_rep.rect
+            xs = [rect.min_point.x,rect.min_point.x,rect.max_point.x,rect.max_point.x]
+            ys = [rect.min_point.y,rect.max_point.y,rect.max_point.y,rect.min_point.y]
+            plt.fill(xs,ys,facecolor='none',linewidth=2)
+        elif isinstance(traj_rep, PointRepresentation):
+            plt.plot(traj_rep.location.x, traj_rep.location.y, 'bo', markeredgewidth=2)
+
+        plt.text(traj_rep.middle.x+0.01,
+                 traj_rep.middle.y+0.02,'trajector')
+
+        '''
         plt.plot(poi.x,poi.y,'rx',markeredgewidth=2)
         plt.text(poi.x+0.01,
                  poi.y+0.02,'POI')
+        '''
 
         plt.plot(head_on.x,head_on.y,'ro',markeredgewidth=2)
         plt.text(head_on.x+0.02,head_on.y+0.01,'perspective')

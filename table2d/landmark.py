@@ -51,7 +51,8 @@ def seg_to_seg_distance(seg1, seg2):
         return 0
     else:
         dists = []
-        dists.append( seg1.distance_to(seg2.start) )
+        dists.append( seg1.distance_to(
+            +seg2.start) )
         dists.append( seg1.distance_to(seg2.end) )
         dists.append( seg2.distance_to(seg1.start) )
         dists.append( seg2.distance_to(seg1.end) )
@@ -108,25 +109,42 @@ def poly_to_poly_distance(poly1, poly2):
     return min(dists)
 
 
+class Color(object):
+    RED = 'RED'
+    GREEN = 'GREEN'
+    PURPLE = 'PURPLE'
+    BLUE = 'BLUE'
+    PINK = 'PINK'
+    ORANGE = 'ORANGE'
+    YELLOW = 'YELLOW'
+    BLACK = 'BLACK'
+    WHITE = 'WHITE'
+
+
+class ObjectClass(object):
+    TABLE = 'TABLE'
+    CHAIR = 'CHAIR'
+    CUP = 'CUP'
+    BOTTLE = 'BOTTLE'
+    PRISM= 'PRISM'
+
 
 class Landmark(object):
-    TABLE = 1
-    CHAIR = 2
-    CUP = 3
-    BOTTLE = 4
-    EDGE = 5
-    CORNER = 6
-    MIDDLE = 7
-    HALF = 8
-    END = 9
-    SIDE = 10
-    LINE = 11
+    EDGE = 'EDGE'
+    CORNER = 'CORNER'
+    MIDDLE = 'MIDDLE'
+    HALF = 'HALF'
+    END = 'END'
+    SIDE = 'SIDE'
+    LINE = 'LINE'
+    POINT = 'POINT'
 
-    def __init__(self, name, representation, parent, object_class):
+    def __init__(self, name, representation, parent, object_class=None, color=None):
         self.name = name
         self.representation = representation
         self.parent = parent
         self.object_class = object_class
+        self.color = color
         self.uuid = uuid4()
 
         self.representation.parent_landmark = self
@@ -140,10 +158,10 @@ class Landmark(object):
     def get_primary_axes(self, perspective=None):
         return self.get_top_parent().get_primary_axes()
 
-    def distance_to(self, point):
+    def distance_to(self, rep):
         #tpd = self.get_top_parent().distance_to(point)
         #if self.parent: point = self.parent.project_point(point)
-        return self.representation.distance_to(point)# + tpd
+        return self.representation.distance_to(rep)# + tpd
 
     def get_top_parent(self):
         top = self.parent
@@ -203,7 +221,8 @@ class AbstractRepresentation(object):
     def my_project_point(self, point):
         raise NotImplementedError
 
-    def distance_to(self, point):
+    def distance_to(self, rep):
+        ''' Takes Representation, returns float '''
         raise NotImplementedError
 
     def get_landmarks(self, max_level=-1):
@@ -216,6 +235,7 @@ class AbstractRepresentation(object):
         return result
 
     def contains(self, other):
+        ''' Takes Representation, returns boolean '''
         raise NotImplementedError
 
 
@@ -231,15 +251,18 @@ class PointRepresentation(AbstractRepresentation):
     def my_project_point(self, point):
         return Vec2(self.location.x, self.location.y)
 
-    def distance_to(self, thing):
-        if isinstance(thing, BoundingBox):
-            return poly_to_vec_distance(thing.to_polygon(), self.location)
-        elif isinstance(thing, Polygon):
-            return poly_to_vec_distance(thing, self.location)
+    def distance_to(self, rep):
+        geo = rep.get_geometry()
+        if isinstance(geo, BoundingBox):
+            return poly_to_vec_distance(geo.to_polygon(), self.location)
+        elif isinstance(geo, Polygon):
+            return poly_to_vec_distance(geo, self.location)
         else:
-            return thing.distance_to(self.location)
+            return geo.distance_to(self.location)
 
     def contains(self, other):
+        ''' If PointRepresentation return True if approx. equal.
+            Return False if any other representation. '''
         if other.num_dim > self.num_dim: return False
         return self.location.almost_equals(other.location)
 
@@ -275,15 +298,16 @@ class LineRepresentation(AbstractRepresentation):
     def my_project_point(self, point):
         return self.line.line.project(point)
 
-    def distance_to(self, thing):
-        if isinstance(thing,Vec2):
-            return self.line.distance_to(thing)
-        elif isinstance(thing,LineSegment):
-            return seg_to_seg_distance(self.line, thing)
-        elif isinstance(thing,BoundingBox):
-            return poly_to_seg_distance(thing.to_polygon(), self.line)
-        elif isinstance(thing,Polygon):
-            return poly_to_seg_distance(thing, self.line)
+    def distance_to(self, rep):
+        geo = rep.get_geometry()
+        if isinstance(geo,Vec2):
+            return self.line.distance_to(geo)
+        elif isinstance(geo,LineSegment):
+            return seg_to_seg_distance(self.line, geo)
+        elif isinstance(geo,BoundingBox):
+            return poly_to_seg_distance(geo.to_polygon(), self.line)
+        elif isinstance(geo,Polygon):
+            return poly_to_seg_distance(geo, self.line)
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
@@ -309,6 +333,8 @@ class CircleRepresentation(AbstractRepresentation):
         self.circ = circ
         self.num_dim = 2
         self.middle = circ.center
+        self.alt_representations = [PointRepresentation(self.middle, self)]
+
         self.landmarks = {
             'middle': Landmark('middle', PointRepresentation(self.middle), self, Landmark.MIDDLE)
         }
@@ -316,17 +342,18 @@ class CircleRepresentation(AbstractRepresentation):
     def my_project_point(self, point):
         return point
 
-    def distance_to(self, thing):
-        if isinstance(thing,Vec2):
-            return self.circ.distance_to(thing)
-        elif isinstance(thing,LineSegment):
-            distance = thing.distance_to(self.circ.center) - self.circ.radius
-        elif isinstance(thing,BoundingBox):
-            distance = poly_to_vec_distance(thing.to_polygon(), self.circ.center) - self.circ.radius
-        elif isinstance(thing,Polygon):
-            distance = poly_to_vec_distance(thing, self.circ.center) - self.circ.radius
-        elif isinstance(thing,Circle):
-            self.circ.distance_to(thing.center) - thing.radius
+    def distance_to(self, rep):
+        geo = rep.get_geometry()
+        if isinstance(geo,Vec2):
+            return self.circ.distance_to(geo)
+        elif isinstance(geo,LineSegment):
+            distance = geo.distance_to(self.circ.center) - self.circ.radius
+        elif isinstance(geo,BoundingBox):
+            distance = poly_to_vec_distance(geo.to_polygon(), self.circ.center) - self.circ.radius
+        elif isinstance(geo,Polygon):
+            distance = poly_to_vec_distance(geo, self.circ.center) - self.circ.radius
+        elif isinstance(geo,Circle):
+            self.circ.distance_to(geo.center) - geo.radius
         return distance if distance > 0 else 0
 
     def contains(self, other):
@@ -411,15 +438,16 @@ class RectangleRepresentation(AbstractRepresentation):
     def my_project_point(self, point):
         return point
 
-    def distance_to(self, thing):
-        if isinstance(thing,Vec2):
-            return poly_to_vec_distance(self.rect.to_polygon(), thing)
-        elif isinstance(thing,LineSegment):
-            return poly_to_seg_distance(self.rect.to_polygon(), thing)
-        elif isinstance(thing,BoundingBox):
-            return bb_to_bb_distance(self.rect, thing)
-        elif isinstance(thing,Polygon):
-            return poly_to_poly_distance(self.rect.to_polygon(), thing)
+    def distance_to(self, rep):
+        geo = rep.get_geometry()
+        if isinstance(geo,Vec2):
+            return poly_to_vec_distance(self.rect.to_polygon(), geo)
+        elif isinstance(geo,LineSegment):
+            return poly_to_seg_distance(self.rect.to_polygon(), geo)
+        elif isinstance(geo,BoundingBox):
+            return bb_to_bb_distance(self.rect, geo)
+        elif isinstance(geo,Polygon):
+            return poly_to_poly_distance(self.rect.to_polygon(), geo)
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
@@ -458,15 +486,16 @@ class PolygonRepresentation(AbstractRepresentation):
     def my_project_point(self, point):
         return point
 
-    def distance_to(self, thing):
-        if isinstance(thing,Vec2):
-            return poly_to_vec_distance(self.poly, thing)
-        elif isinstance(thing,LineSegment):
-            return poly_to_seg_distance(self.poly, thing)
-        elif isinstance(thing,BoundingBox):
-            return poly_to_poly_distance(self.poly, thing.to_polygon())
-        elif isinstance(thing, Polygon):
-            return poly_to_poly_distance(self.poly, thing)
+    def distance_to(self, rep):
+        geo = rep.get_geometry()
+        if isinstance(geo,Vec2):
+            return poly_to_vec_distance(self.poly, geo)
+        elif isinstance(geo,LineSegment):
+            return poly_to_seg_distance(self.poly, geo)
+        elif isinstance(geo,BoundingBox):
+            return poly_to_poly_distance(self.poly, geo.to_polygon())
+        elif isinstance(geo, Polygon):
+            return poly_to_poly_distance(self.poly, geo)
 
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
@@ -531,11 +560,11 @@ class Scene(object):
     def add_landmark(self, lmk):
         self.landmarks[lmk.name] = lmk
 
-    def get_child_scenes(self, location):
+    def get_child_scenes(self, trajector):
         scenes = []
 
         for lmk1 in self.landmarks.values():
-            if lmk1.representation.contains(PointRepresentation(location)):
+            if lmk1.representation.contains(trajector.representation):
                 sc = Scene(lmk1.representation.num_dim)
 
                 for lmk2 in self.landmarks.values():

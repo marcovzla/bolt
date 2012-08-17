@@ -95,7 +95,12 @@ def get_sentence_posteriors(sentence, iterations=1):
     probs = np.array(probs) / sum(probs)
     return uniquify_distribution(meanings,  probs)
 
+def get_sentence_meaning_likelihood(sentence, lmk, rel):
+    modparse = get_modparse(sentence)
+    t = ParentedTree.parse(modparse)
+    print '\n%s\n' % t.pprint()
 
+    return get_tree_prob(t, lmk, rel)
 
 
 if __name__ == '__main__':
