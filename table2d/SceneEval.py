@@ -44,7 +44,7 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,11,Fals
         for cluster in clusterCandidates[1]:
 
             innerObjects = []
-            for id in cluster[1]:
+            for id in cluster:
                 for x in inputObjectSet:
                     if x.id == id:
                         innerObjects.append(x)
@@ -54,16 +54,21 @@ def sceneEval(inputObjectSet,params = ClusterParams(2,0.9,3,0.05,0.1,1,0,11,Fals
             
         #remove core clusters
         for cluster in clusterCandidates[0]:
-            for id in cluster[1]:
+            for id in cluster:
                 for x in reducedObjectSet:
                     if x.id == id:
                         reducedObjectSet.remove(x)
 
     lineCandidates = findChains(reducedObjectSet,params)
-    allCandidates = clusterCandidates[0]+clusterCandidates[1] + lineCandidates +innerLines
-    evali = bundleSearch(cluster_util.totuple(inputObjectSet), allCandidates, params.allow_intersection, params.beam_width)
-    print evali
-    return evali
+    
+    allCandidates = clusterCandidates[0]+clusterCandidates[1] + lineCandidates + innerLines
+    groupDictionary = dict()
+    for i in allCandidates:
+        groupDictionary[i.uuid]=i
+    evali = bundleSearch(cluster_util.totuple(inputObjectSet), allCandidates, params.allow_intersection, params.beam_width)   
+    #find the things in evali that aren't in the dictionary ,and make a singleton group out of them, and add it to the output
+    output = map(lambda x: groupDictionary.get(x),evali)
+    return output
     
 
 def findChains(inputObjectSet, params ):
@@ -91,10 +96,11 @@ def findChains(inputObjectSet, params ):
             verybest.append(line)
     verybest.sort(key=lambda l: len(l),reverse=True)
     costs = map(lambda l: l.pop()+2,verybest)
-    listOfTheWordLine = ["line"]*len(costs)
     data = np.array(map(lambda x: (x.position,x.id),inputObjectSet))
-
-    return zip(costs,verybest,listOfTheWordLine)
+    output = []
+    for i in zip(costs,verybest):
+        output.append(cluster_util.LineBundle(i[1],i[0]))
+    return output
     
             
 def chainSearch(start, finish, points,params):
@@ -157,8 +163,9 @@ def bundleSearch(scene, groups, intersection = 0,beamwidth=10):
     print "number of groups:",len(groups)
     expanded = 0
     singletonCost = 1
+
     for i in scene:
-        groups.append((singletonCost,[i[0]]))
+        groups.append(cluster_util.SingletonBundle([i[0]],singletonCost))
         
     node = BNode(frozenset(), -1, [], 0)
     frontier = BundlePQ()
@@ -170,7 +177,7 @@ def bundleSearch(scene, groups, intersection = 0,beamwidth=10):
         if node.getState() >= frozenset(map(lambda x:x[0],scene)):
             path = node.traceback()
             print "scene evaluation expanded",expanded,"nodes with beam width of ",beamwidth
-            return path
+            break
         explored.add(node.state)
         successors = node.getSuccessors(scene,groups)
         successors.sort(key= lambda s: s.gainratio,reverse=True)
@@ -180,7 +187,8 @@ def bundleSearch(scene, groups, intersection = 0,beamwidth=10):
                 frontier.push(child, child.cost)
             elif frontier.contains(child.state) and frontier.pathCost(child.state) > child.cost:
                 
-                frontier.push(child,child.cost)  
+                frontier.push(child,child.cost)        
+    return path
     
 class Node:
     def __init__(self, state, parent, action, cost,qCost):
@@ -266,9 +274,11 @@ class BNode:
     
     def getSuccessors(self, points,groups):
         successors = []
+
         for g in groups:
-            if len(self.state.intersection(g[1]))<=allow_intersection:
-                asd=BNode(self.state.union(g[1]),self,g,g[0])
+
+            if len(self.state.intersection(g.members))<=allow_intersection:
+                asd=BNode(self.state.union(g.members),self,cluster_util.successorTuple(g.cost,g.members,g.uuid),g.cost)
                 if asd.gain > 0:
                     successors.append(asd)
         return successors
@@ -278,13 +288,14 @@ class BNode:
         solution = []
         node = self
         while node.parent != -1:
-            solution.append(node.action[1])
+#            solution.append(node.action[1])
+            solution.append(node.action.uuid)
 
             node = node.parent
         cardinality = len(solution)-1 #exclude the first node, which has cost 0
         cost = self.cost#/cardinality
         solution.reverse()
-        solution.append(cost)
+        #solution.append(cost)
 
         return solution
     
