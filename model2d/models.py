@@ -11,6 +11,7 @@ from sqlalchemy.ext.declarative import _declarative_constructor
 
 from utils import force_unicode, bigrams, trigrams
 
+import numpy as np
 
 
 
@@ -135,7 +136,7 @@ class Word(Base):
             q = q.filter(Production.relation==rel)
 
         return q
-        
+
     @classmethod
     def delete_words(cls, limit, pos, word, lmk=None, rel=None):
         q = cls.query.join(Production)
@@ -152,6 +153,23 @@ class Word(Base):
         q.filter(Word.word==word)
 
         return q.limit(limit).delete()
+
+class CWord(Base):
+    id = Column(Integer, primary_key=True)
+
+    word = Column(String, nullable=False)
+    pos = Column(String, nullable=False)
+
+    landmark = Column(Integer)
+    landmark_class = Column(Integer)
+    relation = Column(String)
+    relation_distance_class = Column(Integer)
+    relation_degree_class = Column(Integer)
+
+    count = Column(Float, nullable=False, default=0)
+
+    def __unicode__(self):
+        return u'%s (%s)' % (self.word, self.count)
 
 class Bigram(Base):
     id = Column(Integer, primary_key=True)
@@ -230,39 +248,120 @@ class Production(Base):
 
         if lhs is not None:
             q = q.filter(Production.lhs==lhs)
-        
+
         if lmk is not None:
             q = q.filter(Production.landmark==lmk)
-        
+
         if rel is not None:
             q = q.filter(Production.relation==rel)
-        
+
         if parent is not None:
             q = q.join(Production.parent, aliased=True).\
                   filter(Production.lhs==parent).\
                   reset_joinpoint()
-        
+
         return q
-        
+
     @classmethod
     def delete_productions(cls, limit, rhs, lhs=None, parent=None, lmk=None, rel=None):
         q = cls.query
 
         if lhs is not None:
             q = q.filter(Production.lhs==lhs)
-        
+
         if lmk is not None:
             q = q.filter(Production.landmark==lmk)
-        
+
         if rel is not None:
             q = q.filter(Production.relation==rel)
-        
+
         if parent is not None:
             q = q.join(Production.parent, aliased=True).\
                   filter(Production.lhs==parent).\
                   reset_joinpoint()
-        
-        return q.limit(limit).delete()
+
+        ret = q.limit(limit).delete()
+        session.commit()
+        return ret
+
+class CProduction(Base):
+    id = Column(Integer, primary_key=True)
+
+    lhs = Column(String, nullable=False)
+    rhs = Column(String, nullable=False)
+    parent = Column(String)
+
+    # semantic content
+    landmark = Column(Integer)
+    landmark_class = Column(Integer)
+    relation = Column(String)
+    relation_distance_class = Column(Integer)
+    relation_degree_class = Column(Integer)
+
+    count = Column(Float, nullable=False, default=0)
+
+    def __unicode__(self):
+        return u'%s -> %s (%s)' % (self.lhs, self.rhs, self.count)
+
+    @classmethod
+    def get_production_counts(cls,
+                              lhs,
+                              rhs=None,
+                              parent=None,
+                              lmk_class=None,
+                              rel=None,
+                              dist_class=None,
+                              deg_class=None):
+        q = cls.query
+        if lhs != None:
+            q = q.filter(CProduction.lhs==lhs)
+        if rhs != None:
+            q = q.filter(CProduction.rhs==rhs)
+        if parent != None:
+            q = q.filter(CProduction.parent==parent)
+        if lmk_class != None:
+            q = q.filter(CProduction.landmark_class==lmk_class)
+        if rel != None:
+            q = q.filter(CProduction.relation==rel)
+        if dist_class != None:
+            q = q.filter(CProduction.relation_distance_class==dist_class)
+        if deg_class != None:
+            q = q.filter(CProduction.relation_degree_class==deg_class)
+
+        return q
+
+    @classmethod
+    def update_production_counts(cls,
+                                 update,
+                                 lhs,
+                                 rhs,
+                                 parent=None,
+                                 lmk_class=None,
+                                 rel=None,
+                                 dist_class=None,
+                                 deg_class=None):
+        cp_db = cls.get_production_counts(lhs,rhs,parent,lmk_class,rel,dist_class,deg_class)
+
+        ccounter = {}
+        for cprod in cp_db.all():
+            print cprod.rhs, cprod.count
+            if cprod.rhs in ccounter: ccounter[cprod.rhs] += cprod.count
+            else: ccounter[cprod.rhs] = cprod.count
+
+        print '----------------'
+
+        ckeys, ccounts = zip(*ccounter.items())
+
+        ccounts = np.array(ccounts, dtype=float)
+        ccounts /= ccounts.sum()
+        updates = ccounts * update
+        ups = dict( zip(ckeys, updates) )
+
+        for cprod in cp_db.all():
+            cprod.count += ups[cprod.rhs]
+            print cprod.rhs, cprod.count
+        session.flush()
+        session.commit()
 
 class WordCPT(Base):
     id = Column(Integer, primary_key=True)
@@ -324,7 +423,7 @@ class WordCPT(Base):
         wp.all_count = wp.all_count + update_by
         wp.count = wp.count + update_by
         session.commit()
-        return 
+        return
 
 class ExpansionCPT(Base):
     id = Column(Integer, primary_key=True)
@@ -358,7 +457,7 @@ class ExpansionCPT(Base):
         const = q.count()  # normalizing constant
         if const:
             ep.all_count = const
-            ep.count = q.filter_by(rhs=rhs).count() 
+            ep.count = q.filter_by(rhs=rhs).count()
             ep.prob = ep.count / const
         return ep
 
@@ -387,7 +486,7 @@ class ExpansionCPT(Base):
         ep.all_count = ep.all_count + update_by
         ep.count = ep.count + update_by
         session.commit()
-        return 
+        return
 
 
 

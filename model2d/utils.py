@@ -13,7 +13,7 @@ from planar import Vec2, BoundingBox
 # import stuff from table2d
 sys.path.append('..')
 from table2d.speaker import Speaker
-from table2d.landmark import RectangleRepresentation, Scene, Landmark, PointRepresentation
+from table2d.landmark import RectangleRepresentation, Scene, Landmark, PointRepresentation, ObjectClass
 from table2d.relation import (DistanceRelationSet,
                               ContainmentRelationSet,
                               OrientationRelationSet,
@@ -47,11 +47,11 @@ class ModelScene(object):
             table = Landmark('table',
                              RectangleRepresentation(rect=BoundingBox([Vec2(5,5), Vec2(6,7)])),
                              None,
-                             Landmark.TABLE)
+                             ObjectClass.TABLE)
 
             self.scene.add_landmark(table)
             self.table = table
-            
+
         self.table = self.scene.landmarks['table']
         # there is a person standing at this location
         # he will be our reference
