@@ -1,5 +1,6 @@
 % if a PP has a NP followed by a PP
 % move the second PP to be a child of NP
+% NOTE seems this is not happening with the new data 8/18/2010
 PP [ <-2 NP=np & <-1 PP=pp ]
 
 adjoinF (NP @) np
