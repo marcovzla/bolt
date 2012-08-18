@@ -2,10 +2,10 @@
 
 echo "parsing sentences ..."
 # only parse sentences that mention the table
-# and remove the word surface at the end of the sentence (charniak doesn't like it)
+# remove the "The point is" part at the beginning of each sentence
 if test "location_descriptions.csv" -nt "parses.csv"
 then
-cat location_descriptions.csv | grep table | perl -pe "s/ surface$//" | python parse.py > parses.csv
+cat location_descriptions.csv | grep table | perl -pe "s/The point is //" | python parse.py > parses.csv
 fi
 
 
