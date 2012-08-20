@@ -168,6 +168,72 @@ class CWord(Base):
 
     count = Column(Float, nullable=False, default=0)
 
+    @classmethod
+    def get_word_counts(cls,
+                        pos=None,
+                        word=None,
+                        lmk=None,
+                        lmk_class=None,
+                        rel=None,
+                        rel_dist_class=None,
+                        rel_deg_class=None):
+        q = cls.query
+        if word != None:
+            q = q.filter(CWord.word==word)
+        if pos != None:
+            q = q.filter(CWord.pos==pos)
+        if lmk != None:
+            q = q.filter(CWord.landmark==lmk)
+        if lmk_class != None:
+            q = q.filter(CWord.landmark_class==lmk_class)
+        if rel != None:
+            q = q.filter(CWord.relation==rel)
+        if rel_dist_class != None:
+            q = q.filter(CWord.relation_distance_class==rel_dist_class)
+        if rel_deg_class != None:
+            q = q.filter(CWord.relation_degree_class==rel_deg_class)
+
+        return q
+
+    @classmethod
+    def update_word_counts(cls,
+                           update,
+                           pos,
+                           word,
+                           lmk=None,
+                           lmk_class=None,
+                           rel=None,
+                           rel_dist_class=None,
+                           rel_deg_class=None):
+        cp_db = cls.get_word_counts(pos, word, lmk, lmk_class, rel, rel_dist_class, rel_deg_class)
+
+        for cword in cp_db.all():
+            print 'Count for %s before: %f' % (cword.word, cword.count)
+            cword.count *= (1.0 + update)
+            print 'Count for %s after: %f' % (cword.word, cword.count)
+
+        # ccounter = {}
+        # for cword in cp_db.all():
+        #     print cword.word, cword.count
+        #     if cword.word in ccounter: ccounter[cword.word] += cword.count
+        #     else: ccounter[cword.word] = cword.count
+
+        # print '----------------'
+
+        # ckeys, ccounts = zip(*ccounter.items())
+
+        # ccounts = np.array(ccounts, dtype=float)
+        # ccounts /= ccounts.sum()
+        # updates = ccounts * update
+        # ups = dict( zip(ckeys, updates) )
+
+        # for cword in cp_db.all():
+        #     cword.count += ups[cword.word]
+        #     print cword.word, cword.count
+
+        session.flush()
+        session.commit()
+
     def __unicode__(self):
         return u'%s (%s)' % (self.word, self.count)
 
@@ -342,24 +408,30 @@ class CProduction(Base):
                                  deg_class=None):
         cp_db = cls.get_production_counts(lhs,rhs,parent,lmk_class,rel,dist_class,deg_class)
 
-        ccounter = {}
         for cprod in cp_db.all():
-            print cprod.rhs, cprod.count
-            if cprod.rhs in ccounter: ccounter[cprod.rhs] += cprod.count
-            else: ccounter[cprod.rhs] = cprod.count
+            print 'Count for %s before: %f' % (cprod.rhs, cprod.count)
+            cprod.count *= (1.0 + update)
+            print 'Count for %s after: %f' % (cprod.rhs, cprod.count)
 
-        print '----------------'
+        # ccounter = {}
+        # for cprod in cp_db.all():
+        #     print cprod.rhs, cprod.count
+        #     if cprod.rhs in ccounter: ccounter[cprod.rhs] += cprod.count
+        #     else: ccounter[cprod.rhs] = cprod.count
 
-        ckeys, ccounts = zip(*ccounter.items())
+        # print '----------------'
 
-        ccounts = np.array(ccounts, dtype=float)
-        ccounts /= ccounts.sum()
-        updates = ccounts * update
-        ups = dict( zip(ckeys, updates) )
+        # ckeys, ccounts = zip(*ccounter.items())
 
-        for cprod in cp_db.all():
-            cprod.count += ups[cprod.rhs]
-            print cprod.rhs, cprod.count
+        # ccounts = np.array(ccounts, dtype=float)
+        # ccounts /= ccounts.sum()
+        # updates = ccounts * update
+        # ups = dict( zip(ckeys, updates) )
+
+        # for cprod in cp_db.all():
+        #     cprod.count += ups[cprod.rhs]
+        #     print cprod.rhs, cprod.count
+
         session.flush()
         session.commit()
 

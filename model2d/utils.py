@@ -130,7 +130,7 @@ def get_meaning(loc=None, num_ancestors=None):
 
 def m2s(lmk, rel):
     """returns a string that describes the gives landmark and relation"""
-    return '<lmk=%s(%s), rel=%s>' % (repr(lmk), lmk_id(lmk), rel_type(rel))
+    return '<lmk=%s(%s, %s), rel=%s>' % (repr(lmk), lmk_id(lmk), lmk.object_class, rel_type(rel))
 
 
 

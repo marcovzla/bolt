@@ -91,6 +91,9 @@ if __name__ == '__main__':
             lmk, _, _ = lmk
             rel, _, _ = rel
 
+            assert(not isinstance(lmk, tuple))
+            assert(not isinstance(rel, tuple))
+
             if args.verbose:
                 print 'utterance:', repr(sentence)
                 print 'location: %s' % repr(loc)

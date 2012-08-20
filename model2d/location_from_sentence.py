@@ -34,7 +34,7 @@ def get_tree_prob(tree, lmk=None, rel=None):
         pos = tree.node
 
         p = WordCPT.probability(word=word, pos=pos,
-                                    lmk=lmk_id(lmk), rel=rel_type(rel))
+                                lmk=lmk_id(lmk), rel=rel_type(rel))
         print p, pos, '->', word, m2s(lmk,rel)
         prob *= p
 
@@ -62,7 +62,7 @@ def get_tree_prob(tree, lmk=None, rel=None):
             print p, repr(lhs), '->', repr(rhs)
         else:
             p = ExpansionCPT.probability(rhs=rhs, lhs=lhs, parent=parent,
-                                             lmk=lmk_id(lmk), rel=rel_type(rel))
+                                         lmk=lmk_id(lmk), rel=rel_type(rel))
             print p, repr(lhs), '->', repr(rhs), 'parent=%r'%parent, m2s(lmk,rel)
         prob *= p
 
