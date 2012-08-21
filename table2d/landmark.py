@@ -146,6 +146,7 @@ class Landmark(object):
         self.object_class = object_class
         self.color = color
         self.uuid = uuid4()
+        self.ori_relations = set()
 
         self.representation.parent_landmark = self
 

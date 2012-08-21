@@ -6,6 +6,7 @@ import sys
 import random
 from itertools import product
 from functools import partial
+import inspect
 
 import numpy as np
 from planar import Vec2, BoundingBox
@@ -202,6 +203,11 @@ def force_unicode(s, encoding='utf-8', errors='strict'):
     else:
         return str(s).decode(encoding, errors)
 
+
+def logger(msg):
+    fn, line = inspect.stack()[1][1:3]
+    fn = fn[fn.rfind('/')+1:]
+    print "%s:%d - %s" % (fn, line, msg)
 
 
 # generates a list of tuples of size `n`

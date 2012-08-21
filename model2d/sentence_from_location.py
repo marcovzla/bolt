@@ -15,7 +15,7 @@ from location_from_sentence import get_sentence_posteriors, get_sentence_meaning
 #import collections
 import numpy as np
 
-
+np.seterr(all='raise')
 
 def get_expansion(lhs, parent=None, lmk=None, rel=None):
     lhs_rhs_parent_chain = []
@@ -203,6 +203,11 @@ def generate_sentence(loc, consistent, scene=None):
 
         return meaning, sentence
 
+
+def confidence(p, H):
+    return (H + np.log(p)) / H
+
+
 def accept_correction( meaning, correction ):
     (lmk, lmk_prob, lmk_ent,
      rel, rel_prob, rel_ent,
@@ -211,28 +216,45 @@ def accept_correction( meaning, correction ):
      rel_words, relw_prob, relw_ent,
      lmk_words, lmkw_prob, lmkw_ent) = meaning.args
 
-    old_meaning_prob, old_meaning_entropy = get_sentence_meaning_likelihood( correction, lmk, rel )
+    old_meaning_prob, old_meaning_entropy, lrpc, tps = get_sentence_meaning_likelihood( correction, lmk, rel )
 
-    scale = 0.5
-    update = -lmk_prob * rel_prob * scale # * old_meaning_prob
-    print lmk_prob, rel_prob, update
+    scale = 10
+    learning_factor = 1000
+    c1 = confidence(lmk_prob * rel_prob, lmk_ent + rel_ent)
+    c2 = confidence(old_meaning_prob, old_meaning_entropy)
+
+    if c1 + c2 <= 0: return # update the semantics
+
+    update = (c1 + c2) * scale * learning_factor
+    print 'lmk_prob, lmk_ent, rel_prob, rel_ent, old_meaning_prob, old_meaning_entropy, c1, c2, update', lmk_prob, lmk_ent, rel_prob, rel_ent, old_meaning_prob, old_meaning_entropy, c1, c2, update
     print lmk.object_class, type(rel)
 
+    dec_update = -update
+
     for lhs,rhs,parent,_ in rel_exp_chain:
-        print 'Updating production - lhs: %s, rhs: %s, parent: %s' % (lhs,rhs,parent)
-        update_expansion_counts( update, lhs, rhs, parent, rel=rel )
+        print 'Decrementing production - lhs: %s, rhs: %s, parent: %s' % (lhs,rhs,parent)
+        update_expansion_counts( dec_update, lhs, rhs, parent, rel=rel )
 
     for lhs,rhs,parent,lmk_class in lmk_exp_chain:
-        print 'Updating production - lhs: %s, rhs: %s, parent: %s' % (lhs,rhs,parent)
-        update_expansion_counts( update, lhs, rhs, parent, lmk_class=lmk_class )
+        print 'Decrementing production - lhs: %s, rhs: %s, parent: %s' % (lhs,rhs,parent)
+        update_expansion_counts( dec_update, lhs, rhs, parent, lmk_class=lmk_class )
 
     for term,word in zip(rel_terminals,rel_words):
-        print 'Updating word - pos: %s, word: %s, rel: %s' % (term, word, rel)
-        update_word_counts( update, term, word, rel=rel )
+        print 'Decrementing word - pos: %s, word: %s, rel: %s' % (term, word, rel)
+        update_word_counts( dec_update, term, word, rel=rel )
 
     for term,word,l in zip(lmk_terminals,lmk_words,lmk_landmarks):
-        print 'Updating word - pos: %s, word: %s, lmk_class: %s' % (term, word, l.object_class)
-        update_word_counts( update, term, word, lmk_class=l.object_class )
+        print 'Decrementing word - pos: %s, word: %s, lmk_class: %s' % (term, word, l.object_class)
+        update_word_counts( dec_update, term, word, lmk_class=l.object_class )
+
+    # reward new words with old meaning
+    for lhs,rhs,parent,lmk_class,rel in lrpc:
+        print 'Incrementing production - lhs: %s, rhs: %s, parent: %s' % (lhs,rhs,parent)
+        update_expansion_counts( update, lhs, rhs, parent, rel=rel, lmk_class=lmk_class )
+
+    for lhs,rhs,lmk,rel in tps:
+        print 'Incrementing word - pos: %s, word: %s, lmk_class: %s' % (lhs, rhs, (lmk.object_class if lmk else None) )
+        update_word_counts( update, lhs, rhs, lmk_class=(lmk.object_class if lmk else None), rel=rel )
 
 
 # this class is only used for the --location command line argument

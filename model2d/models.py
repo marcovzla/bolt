@@ -9,7 +9,7 @@ from sqlalchemy.orm import relationship, backref, aliased, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.declarative import _declarative_constructor
 
-from utils import force_unicode, bigrams, trigrams
+from utils import force_unicode, bigrams, trigrams, lmk_id
 
 import numpy as np
 
@@ -207,29 +207,41 @@ class CWord(Base):
                            rel_deg_class=None):
         cp_db = cls.get_word_counts(pos, word, lmk, lmk_class, rel, rel_dist_class, rel_deg_class)
 
-        for cword in cp_db.all():
-            print 'Count for %s before: %f' % (cword.word, cword.count)
-            cword.count *= (1.0 + update)
-            print 'Count for %s after: %f' % (cword.word, cword.count)
+        if cp_db.count() <= 0:
+            assert(update > 0)
+            CWord(word=word,
+                  pos=pos,
+                  landmark=lmk_id(lmk),
+                  landmark_class=lmk_class,
+                  relation=rel,
+                  relation_distance_class=rel_dist_class,
+                  relation_degree_class=rel_deg_class,
+                  count=update)
+        else:
+            # for cword in cp_db.all():
+            #     print 'Count for %s before: %f' % (cword.word, cword.count)
+            #     cword.count *= (1.0 + update)
+            #     print 'Count for %s after: %f' % (cword.word, cword.count)
 
-        # ccounter = {}
-        # for cword in cp_db.all():
-        #     print cword.word, cword.count
-        #     if cword.word in ccounter: ccounter[cword.word] += cword.count
-        #     else: ccounter[cword.word] = cword.count
+            ccounter = {}
+            for cword in cp_db.all():
+                print cword.word, cword.count
+                if cword.word in ccounter: ccounter[cword.word] += cword.count
+                else: ccounter[cword.word] = cword.count
 
-        # print '----------------'
+            print '----------------'
 
-        # ckeys, ccounts = zip(*ccounter.items())
+            ckeys, ccounts = zip(*ccounter.items())
 
-        # ccounts = np.array(ccounts, dtype=float)
-        # ccounts /= ccounts.sum()
-        # updates = ccounts * update
-        # ups = dict( zip(ckeys, updates) )
+            ccounts = np.array(ccounts, dtype=float)
+            ccounts /= ccounts.sum()
+            updates = ccounts * update
+            ups = dict( zip(ckeys, updates) )
 
-        # for cword in cp_db.all():
-        #     cword.count += ups[cword.word]
-        #     print cword.word, cword.count
+            for cword in cp_db.all():
+                if cword.count <= -ups[cword.word]: cword.count = 1
+                else: cword.count += ups[cword.word]
+                print cword.word, cword.count
 
         session.flush()
         session.commit()
@@ -408,29 +420,41 @@ class CProduction(Base):
                                  deg_class=None):
         cp_db = cls.get_production_counts(lhs,rhs,parent,lmk_class,rel,dist_class,deg_class)
 
-        for cprod in cp_db.all():
-            print 'Count for %s before: %f' % (cprod.rhs, cprod.count)
-            cprod.count *= (1.0 + update)
-            print 'Count for %s after: %f' % (cprod.rhs, cprod.count)
+        if cp_db.count() <= 0:
+            assert(update > 0)
+            CProduction(lhs=lhs,
+                        rhs=rhs,
+                        parent=parent,
+                        landmark_class=lmk_class,
+                        relation=rel,
+                        relation_distance_class=dist_class,
+                        relation_degree_class=deg_class,
+                        count=update)
+        else:
+            # for cprod in cp_db.all():
+            #     print 'Count for %s before: %f' % (cprod.rhs, cprod.count)
+            #     cprod.count *= (1.0 + update)
+            #     print 'Count for %s after: %f' % (cprod.rhs, cprod.count)
 
-        # ccounter = {}
-        # for cprod in cp_db.all():
-        #     print cprod.rhs, cprod.count
-        #     if cprod.rhs in ccounter: ccounter[cprod.rhs] += cprod.count
-        #     else: ccounter[cprod.rhs] = cprod.count
+            ccounter = {}
+            for cprod in cp_db.all():
+                print cprod.rhs, cprod.count
+                if cprod.rhs in ccounter: ccounter[cprod.rhs] += cprod.count
+                else: ccounter[cprod.rhs] = cprod.count
 
-        # print '----------------'
+            print '----------------'
 
-        # ckeys, ccounts = zip(*ccounter.items())
+            ckeys, ccounts = zip(*ccounter.items())
 
-        # ccounts = np.array(ccounts, dtype=float)
-        # ccounts /= ccounts.sum()
-        # updates = ccounts * update
-        # ups = dict( zip(ckeys, updates) )
+            ccounts = np.array(ccounts, dtype=float)
+            ccounts /= ccounts.sum()
+            updates = ccounts * update
+            ups = dict( zip(ckeys, updates) )
 
-        # for cprod in cp_db.all():
-        #     cprod.count += ups[cprod.rhs]
-        #     print cprod.rhs, cprod.count
+            for cprod in cp_db.all():
+                if cprod.count <= -ups[cprod.rhs]: cprod.count = 1
+                else: cprod.count += ups[cprod.rhs]
+                print cprod.rhs, cprod.count
 
         session.flush()
         session.commit()
