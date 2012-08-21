@@ -24,13 +24,9 @@ def parse_sentences(ss, parser_path='../bllip-parser'):
     # get into the charniak parser directory
     os.chdir(parser_path)
     # call the parser
-    # try:
-    proc = subprocess.Popen(['./parse.sh','-t4', temp.name],
+    proc = subprocess.Popen(['./parse.sh', '-t4', temp.name],
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
-    # except Exception as e:
-    #     print e
-    #     exit(1)
     # capture output
     output = proc.communicate()[0]
     # return to where i was

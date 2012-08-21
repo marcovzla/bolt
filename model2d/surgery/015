@@ -1,5 +1,8 @@
-PP=rel [ > LOCATION-PHRASE=loc & <-1 NP=lmk ]
+% fix for "the left near corner"
+LOCATION-PHRASE < (PP <-1 (NP [ <1 NP=np1 & <2 (PP=pp [ <1 (IN=in < near) & <-1 (NP=np2 <1 NP=np3)])]))
 
-relabel rel RELATION
-move lmk >-1 loc
-relabel lmk LANDMARK-PHRASE
+move in >-1 np1
+move np3 >-1 np1
+excise np3 np3
+excise np2 np2
+excise pp pp

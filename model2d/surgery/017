@@ -1,3 +1,6 @@
-LANDMARK-PHRASE=lmk !< LANDMARK
+LANDMARK-PHRASE < (NP=lmk $+ (PP=pp < ((IN=of < of) $+ NP=obj)))
 
-adjoin (LANDMARK-PHRASE LANDMARK@) lmk
+relabel lmk LANDMARK
+relabel of OF
+relabel obj LANDMARK-PHRASE
+excise pp pp

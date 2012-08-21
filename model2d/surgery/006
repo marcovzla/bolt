@@ -1,4 +1,5 @@
 % move every not into its ADJP right sibling
+% NOTE seems this is not happening with the new data 8/18/2010
 RB=rb [ < not & $+ ADJP=adjp ]
 
 move rb >1 adjp
