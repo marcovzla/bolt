@@ -19,6 +19,7 @@ from table2d.relation import (DistanceRelationSet,
                               OrientationRelationSet,
                               VeryCloseDistanceRelation)
 
+NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
 
 
 def parent_landmark(lmk):
@@ -130,7 +131,9 @@ def get_meaning(loc=None, num_ancestors=None):
 
 def m2s(lmk, rel):
     """returns a string that describes the gives landmark and relation"""
-    return '<lmk=%s(%s, %s), rel=%s>' % (repr(lmk), lmk_id(lmk), lmk.object_class, rel_type(rel))
+    return '<lmk=%s(%s, %s), rel=%s(%s,%s)>' % (repr(lmk), lmk_id(lmk), lmk.object_class if lmk else None, rel_type(rel),
+                                                rel.measurement.best_degree_class if hasattr(rel,'measurement') else None,
+                                                rel.measurement.best_distance_class if hasattr(rel,'measurement') else None)
 
 
 

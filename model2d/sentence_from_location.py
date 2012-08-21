@@ -8,14 +8,12 @@ from operator import itemgetter
 
 import utils
 from utils import (get_meaning, categorical_sample, parent_landmark,
-                   lmk_id, rel_type, m2s, count_lmk_phrases)
+                   lmk_id, rel_type, m2s, count_lmk_phrases, NONTERMINALS)
 from models import Word, Production, CProduction, CWord
 
 from location_from_sentence import get_sentence_posteriors, get_sentence_meaning_likelihood
 #import collections
 import numpy as np
-
-NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
 
 
 
@@ -213,7 +211,7 @@ def accept_correction( meaning, correction ):
      rel_words, relw_prob, relw_ent,
      lmk_words, lmkw_prob, lmkw_ent) = meaning.args
 
-    # old_meaning_prob = get_sentence_meaning_likelihood( correction, lmk, rel )
+    old_meaning_prob, old_meaning_entropy = get_sentence_meaning_likelihood( correction, lmk, rel )
 
     scale = 0.5
     update = -lmk_prob * rel_prob * scale # * old_meaning_prob
