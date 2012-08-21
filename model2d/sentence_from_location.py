@@ -174,9 +174,11 @@ class Meaning(object):
 def generate_sentence(loc, consistent, scene=None):
     utils.scene = utils.ModelScene(scene)
 
+    (lmk, lmk_prob, lmk_ent), (rel, rel_prob, rel_ent) = get_meaning(loc=loc)
+    meaning1 = m2s(lmk, rel)
+    print meaning1
+
     while True:
-        (lmk, lmk_prob, lmk_ent), (rel, rel_prob, rel_ent) = get_meaning(loc=loc)
-        print m2s(lmk, rel)
         rel_exp_chain, rele_prob_chain, rele_ent_chain, rel_terminals, rel_landmarks = get_expansion('RELATION', rel=rel)
         lmk_exp_chain, lmke_prob_chain, lmke_ent_chain, lmk_terminals, lmk_landmarks = get_expansion('LANDMARK-PHRASE', lmk=lmk)
         rel_words, relw_prob, relw_ent = get_words(rel_terminals, landmarks=rel_landmarks, rel=rel)
@@ -192,14 +194,29 @@ def generate_sentence(loc, consistent, scene=None):
                            lmk_exp_chain, lmke_prob_chain, lmke_ent_chain, lmk_terminals, lmk_landmarks,
                            rel_words, relw_prob, relw_ent,
                            lmk_words, lmkw_prob, lmkw_ent))
+
         if consistent:
-            meaning1 = m2s(lmk,rel)
-            # get the most likely meaning for the generated sentence
-            posteriors = get_sentence_posteriors(sentence)
-            meaning2 = max(posteriors, key=itemgetter(1))[0]
-            # is this what we are trying to say?
-            if meaning1 != meaning2:
+             # get the most likely meaning for the generated sentence
+            try:
+                posteriors = get_sentence_posteriors(sentence, iterations=10, extra_meaning=(lmk,rel))
+            except:
+                print 'try again ...'
                 continue
+
+            meaning2 = max(posteriors, key=itemgetter(1))[0]
+
+            # is the original meaning the best one?
+            if meaning1 != meaning2:
+                print
+                print 'sentence:', sentence
+                print 'original:', meaning1
+                print 'interpreted:', meaning2
+                print 'try again ...'
+                print
+                continue
+
+            for m,p in sorted(posteriors, key=itemgetter(1)):
+                print m, p
 
         return meaning, sentence
 
