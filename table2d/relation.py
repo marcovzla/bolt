@@ -18,15 +18,15 @@ class RelationSet(object):
 
 
 class Degree(object):
-    NONE     = 'DEGREE NONE'
-    SOMEWHAT = 'DEGREE SOMEWHAT'
-    VERY     = 'DEGREE VERY'
+    NONE     = 'DegreeNone'
+    SOMEWHAT = 'DegreeSomewhat'
+    VERY     = 'DegreeVery'
 
 
 class Measurement(object):
-    NONE = 'MEASUREMENT NONE'
-    FAR  = 'MEASUREMENT FAR'
-    NEAR = 'MEASUREMENT NEAR'
+    NONE = 'MeasurementNone'
+    FAR  = 'MeasurementFar'
+    NEAR = 'MeasurementNear'
 
     def __init__(self, distance, required=True, distance_class=None, degree_class=None):
         self.distance_classes = {

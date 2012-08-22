@@ -48,12 +48,8 @@ class Speaker(object):
 
         sceness, landmarks = zip( *all_landmarks )
 
-        sampled_landmark, sl_prob, sl_ent = self.sample_landmark( landmarks, trajector )
+        sampled_landmark, sl_prob, sl_ent, head_on = self.sample_landmark( landmarks, trajector )
         # print '   ', sampled_landmark, sl_prob, sl_ent
-
-        head_on = self.get_head_on_viewpoint(sampled_landmark)
-
-        self.set_orientations(sampled_landmark, head_on)
 
         sampled_relation, sr_prob, sr_ent = self.sample_relation( trajector, scene.get_bounding_box(), head_on, sampled_landmark, step=0.1 )
         # print '   ', sampled_relation, sr_prob, sr_ent
@@ -122,7 +118,7 @@ class Speaker(object):
             options = set(options).difference(set(par_options))
             self.set_orientations(par_lmk, perspective)
 
-        landmark.ori_relations = options
+        landmark.ori_relations = map(type, options)
 
     def talk_to_baby(self, scene, perspectives, how_many_each=10000):
 
@@ -258,7 +254,11 @@ class Speaker(object):
         lm_probabilities = scores/sum(scores)
         index = lm_probabilities.cumsum().searchsorted( random.sample(1) )[0]
 
-        return landmarks[index], lm_probabilities[index], self.get_entropy(lm_probabilities)
+        sampled_landmark = landmarks[index]
+        head_on = self.get_head_on_viewpoint(sampled_landmark)
+        self.set_orientations(sampled_landmark, head_on)
+
+        return sampled_landmark, lm_probabilities[index], self.get_entropy(lm_probabilities), head_on
 
     def get_landmark_probability(self, sampled_landmark, landmarks, trajector):
         epsilon = 0.000001

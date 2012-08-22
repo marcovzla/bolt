@@ -3,74 +3,23 @@
 
 from __future__ import division
 
-from collections import defaultdict
 from operator import itemgetter
 
 import numpy as np
 from nltk.tree import ParentedTree
 from parse import get_modparse
-from utils import (parent_landmark, get_meaning, lmk_id, rel_type, m2s,
-                   count_lmk_phrases, logger, NONTERMINALS)
-from models import WordCPT, ExpansionCPT, CProduction, CWord
+from utils import (parent_landmark,
+                   get_meaning,
+                   rel_type,
+                   m2s,
+                   count_lmk_phrases,
+                   logger,
+                   get_lmk_ori_rels_str,
+                   NONTERMINALS)
+from models import CProduction, CWord
 
 
 
-def uniquify_distribution(labels, probs):
-    new_dist = defaultdict(float)
-    for j in xrange(len(labels)):
-        marker = str(labels[j])
-        new_dist[marker] = probs[j]
-    return new_dist.items()
-
-
-
-def get_tree_prob(tree, lmk=None, rel=None):
-    prob = 1.0
-
-    if len(tree.productions()) == 1:
-        # if this tree only has one production
-        # it means that its child is a terminal (word)
-        word = tree[0]
-        pos = tree.node
-
-        p = WordCPT.probability(word=word, pos=pos,
-                                lmk=lmk_id(lmk), rel=rel_type(rel))
-        print p, pos, '->', word, m2s(lmk,rel)
-        prob *= p
-
-    else:
-        lhs = tree.node
-        rhs = ' '.join(n.node for n in tree)
-        parent = tree.parent.node if tree.parent else None
-
-        if lhs == 'RELATION':
-            # everything under a RELATION node should ignore the landmark
-            lmk = None
-        elif lhs == 'LANDMARK-PHRASE':
-            # everything under a LANDMARK-PHRASE node should ignore the relation
-            rel = None
-
-            if parent == 'LANDMARK-PHRASE':
-                # if the current node is a LANDMARK-PHRASE and the parent node
-                # is also a LANDMARK-PHRASE then we should move to the parent
-                # of the current landmark
-                lmk = parent_landmark(lmk)
-
-        if not parent:
-            # LOCATION-PHRASE has no parent and is not related to lmk and rel
-            p = ExpansionCPT.probability(rhs=rhs, lhs=lhs)
-            print p, repr(lhs), '->', repr(rhs)
-        else:
-            p = ExpansionCPT.probability(rhs=rhs, lhs=lhs, parent=parent,
-                                         lmk=lmk_id(lmk), rel=rel_type(rel))
-            print p, repr(lhs), '->', repr(rhs), 'parent=%r'%parent, m2s(lmk,rel)
-        prob *= p
-
-        # call get_tree_prob recursively for each subtree
-        for subtree in tree:
-            prob *= get_tree_prob(subtree, lmk, rel)
-
-    return prob
 
 def get_tree_probs(tree, lmk=None, rel=None):
     lhs_rhs_parent_chain = []
@@ -98,6 +47,7 @@ def get_tree_probs(tree, lmk=None, rel=None):
         lmk = parent_landmark(lmk)
 
     lmk_class = (lmk.object_class if lmk and lhs != 'LOCATION-PHRASE' else None)
+    lmk_ori_rels = get_lmk_ori_rels_str(lmk)
     rel_class = rel_type(rel) if lhs != 'LOCATION-PHRASE' else None
     dist_class = (rel.measurement.best_distance_class if hasattr(rel, 'measurement') and lhs != 'LOCATION-PHRASE' else None)
     deg_class = (rel.measurement.best_degree_class if hasattr(rel, 'measurement') and lhs != 'LOCATION-PHRASE' else None)
@@ -106,6 +56,7 @@ def get_tree_probs(tree, lmk=None, rel=None):
         cp_db = CProduction.get_production_counts(lhs=lhs,
                                                   parent=parent,
                                                   lmk_class=lmk_class,
+                                                  lmk_ori_rels=lmk_ori_rels,
                                                   rel=rel_class,
                                                   dist_class=dist_class,
                                                   deg_class=deg_class)
@@ -137,7 +88,7 @@ def get_tree_probs(tree, lmk=None, rel=None):
         logger('ccounts: %s' % str(ccounts))
         logger('rhs: %s, cprod_prob: %s, cprod_entropy: %s' % (rhs, cprod_prob, cprod_entropy))
 
-        lhs_rhs_parent_chain.append( ( lhs, rhs, parent, (lmk.object_class if lmk else None), rel ) )
+        lhs_rhs_parent_chain.append( ( lhs, rhs, parent, lmk, rel ) )
         prob_chain.append( cprod_prob )
         entropy_chain.append( cprod_entropy )
 
@@ -151,6 +102,7 @@ def get_tree_probs(tree, lmk=None, rel=None):
     else:
         cw_db = CWord.get_word_counts(pos=lhs,
                                       lmk_class=lmk_class,
+                                      lmk_ori_rels=lmk_ori_rels,
                                       rel=rel_class,
                                       rel_dist_class=dist_class,
                                       rel_deg_class=deg_class)

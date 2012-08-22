@@ -15,21 +15,7 @@ from random import random
 import pickle
 import adapter
 
-if __name__ == '__main__':
-    # poi = Vec2(float(sys.argv[1]), 0)
-    # l = LineRepresentation()
-
-    # f = l.get_line_features(poi)
-
-    # print 'dist_start = {dist_start}, dist_end = {dist_end}, dist_mid = {dist_mid}'.format(**f)
-    # print 'dir_start = {dir_start}, dir_end = {dir_end}, dir_mid = {dir_mid}'.format(**f)
-
-    # print 'Distance from POI to Start landmark is %f' % l.landmarks['start'].distance_to(poi)
-    # print 'Distance from POI to End landmark is %f' % l.landmarks['end'].distance_to(poi)
-    # print 'Distance from POI to Mid landmark is %f' % l.landmarks['mid'].distance_to(poi)
-    # cups 7 cm in diameter
-    # triangles are 6 by 10 cm
-
+def construct_training_scene():
     speaker = Speaker(Vec2(0,0))
     scene = Scene(3)
 
@@ -73,6 +59,14 @@ if __name__ == '__main__':
     for obj in (obj1, obj2, obj3, obj4, obj5):
         obj.representation.alt_representations = []
         scene.add_landmark(obj)
+
+    return scene, speaker
+
+if __name__ == '__main__':
+
+    scene, speaker = construct_training_scene()
+
+
 
     # groups = adapter.adapt(scene)
 

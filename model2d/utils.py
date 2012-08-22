@@ -4,7 +4,6 @@ from __future__ import division
 
 import sys
 import random
-from itertools import product
 from functools import partial
 import inspect
 
@@ -15,13 +14,13 @@ from planar import Vec2, BoundingBox
 sys.path.append('..')
 from table2d.speaker import Speaker
 from table2d.landmark import RectangleRepresentation, Scene, Landmark, PointRepresentation, ObjectClass
-from table2d.relation import (DistanceRelationSet,
-                              ContainmentRelationSet,
-                              OrientationRelationSet,
-                              VeryCloseDistanceRelation)
+from table2d.relation import OrientationRelationSet
+from table2d.run import construct_training_scene
 
 NONTERMINALS = ('LOCATION-PHRASE', 'RELATION', 'LANDMARK-PHRASE', 'LANDMARK')
 
+def get_lmk_ori_rels_str(lmk):
+    return ( ','.join([rel.__name__ if rel in lmk.ori_relations else '' for rel in OrientationRelationSet.relations]) ) if lmk else None
 
 def parent_landmark(lmk):
     """gets a landmark and returns its parent landmark
@@ -40,7 +39,7 @@ def count_lmk_phrases(t):
 
 # a wrapper for a table2d scene
 class ModelScene(object):
-    def __init__(self, scene=None):
+    def __init__(self, scene=None, speaker=None):
         self.scene = scene
         if scene is None:
             self.scene = Scene(3)
@@ -57,7 +56,10 @@ class ModelScene(object):
         self.table = self.scene.landmarks['table']
         # there is a person standing at this location
         # he will be our reference
-        self.speaker = Speaker(Vec2(5.5, 4.5))
+        if speaker is None:
+            self.speaker = Speaker(Vec2(5.5, 4.5))
+        else:
+            self.speaker = speaker
 
         # NOTE we need to keep around the list of landmarks so that we can
         # access them by id, which is the index of the landmark in this list
@@ -101,8 +103,7 @@ class ModelScene(object):
             landmarks = [l for l in landmarks if l.get_ancestor_count() == num_ancestors]
 
         loc = Landmark(None, PointRepresentation(loc), None, None)
-        lmk, lmk_prob, lmk_entropy = self.speaker.sample_landmark( landmarks, loc )
-        head_on = self.speaker.get_head_on_viewpoint(lmk)
+        lmk, lmk_prob, lmk_entropy, head_on = self.speaker.sample_landmark( landmarks, loc )
         rel, rel_prob, rel_entropy = self.speaker.sample_relation(loc, self.table.representation.get_geometry(), head_on, lmk, step=0.5)
         rel = rel(head_on,lmk,loc)
 
@@ -110,7 +111,7 @@ class ModelScene(object):
 
 
 # we will use this instance of the scene
-scene = ModelScene()
+scene = ModelScene( *construct_training_scene() )
 
 
 

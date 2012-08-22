@@ -3,9 +3,9 @@
 
 from __future__ import division
 
-from sqlalchemy import create_engine, and_, or_
+from sqlalchemy import create_engine
 from sqlalchemy import Column, Integer, Float, String, ForeignKey
-from sqlalchemy.orm import relationship, backref, aliased, sessionmaker
+from sqlalchemy.orm import relationship, backref, sessionmaker
 from sqlalchemy.ext.declarative import declarative_base, declared_attr
 from sqlalchemy.ext.declarative import _declarative_constructor
 
@@ -14,14 +14,10 @@ from utils import force_unicode, bigrams, trigrams, lmk_id
 import numpy as np
 
 
-
-
 ### configuration ###
 
 db_url = 'sqlite:///table2d.db'
 echo = False
-
-
 
 
 
@@ -109,6 +105,7 @@ class Location(Base):
     def __unicode__(self):
         return u'(%s,%s)' % (self.x, self.y)
 
+
 class Word(Base):
     id = Column(Integer, primary_key=True)
 
@@ -162,6 +159,7 @@ class CWord(Base):
 
     landmark = Column(Integer)
     landmark_class = Column(Integer)
+    landmark_orientation_relations = Column(String)
     relation = Column(String)
     relation_distance_class = Column(Integer)
     relation_degree_class = Column(Integer)
@@ -174,6 +172,7 @@ class CWord(Base):
                         word=None,
                         lmk=None,
                         lmk_class=None,
+                        lmk_ori_rels=None,
                         rel=None,
                         rel_dist_class=None,
                         rel_deg_class=None):
@@ -186,6 +185,8 @@ class CWord(Base):
             q = q.filter(CWord.landmark==lmk)
         if lmk_class != None:
             q = q.filter(CWord.landmark_class==lmk_class)
+        if lmk_ori_rels is not None:
+            q = q.filter(CWord.landmark_orientation_relations==lmk_ori_rels)
         if rel != None:
             q = q.filter(CWord.relation==rel)
         if rel_dist_class != None:
@@ -202,10 +203,11 @@ class CWord(Base):
                            word,
                            lmk=None,
                            lmk_class=None,
+                           lmk_ori_rels=None,
                            rel=None,
                            rel_dist_class=None,
                            rel_deg_class=None):
-        cp_db = cls.get_word_counts(pos, word, lmk, lmk_class, rel, rel_dist_class, rel_deg_class)
+        cp_db = cls.get_word_counts(pos, word, lmk, lmk_class, lmk_ori_rels, rel, rel_dist_class, rel_deg_class)
 
         if cp_db.count() <= 0:
             assert(update > 0)
@@ -213,6 +215,7 @@ class CWord(Base):
                   pos=pos,
                   landmark=lmk_id(lmk),
                   landmark_class=lmk_class,
+                  landmark_orientation_relations=lmk_ori_rels,
                   relation=rel,
                   relation_distance_class=rel_dist_class,
                   relation_degree_class=rel_deg_class,
@@ -304,6 +307,7 @@ class Production(Base):
     # semantic content
     landmark = Column(Integer)
     landmark_class = Column(Integer)
+    landmark_orientation_relations = Column(String)
     relation = Column(String)
     relation_distance_class = Column(Integer)
     relation_degree_class = Column(Integer)
@@ -372,6 +376,7 @@ class CProduction(Base):
     # semantic content
     landmark = Column(Integer)
     landmark_class = Column(Integer)
+    landmark_orientation_relations = Column(String)
     relation = Column(String)
     relation_distance_class = Column(Integer)
     relation_degree_class = Column(Integer)
@@ -387,6 +392,7 @@ class CProduction(Base):
                               rhs=None,
                               parent=None,
                               lmk_class=None,
+                              lmk_ori_rels=None,
                               rel=None,
                               dist_class=None,
                               deg_class=None):
@@ -399,6 +405,8 @@ class CProduction(Base):
             q = q.filter(CProduction.parent==parent)
         if lmk_class != None:
             q = q.filter(CProduction.landmark_class==lmk_class)
+        if lmk_ori_rels is not None:
+            q = q.filter(CProduction.landmark_orientation_relations==lmk_ori_rels)
         if rel != None:
             q = q.filter(CProduction.relation==rel)
         if dist_class != None:
@@ -415,10 +423,11 @@ class CProduction(Base):
                                  rhs,
                                  parent=None,
                                  lmk_class=None,
+                                 lmk_ori_rels=None,
                                  rel=None,
                                  dist_class=None,
                                  deg_class=None):
-        cp_db = cls.get_production_counts(lhs,rhs,parent,lmk_class,rel,dist_class,deg_class)
+        cp_db = cls.get_production_counts(lhs,rhs,parent,lmk_class,lmk_ori_rels,rel,dist_class,deg_class)
 
         if cp_db.count() <= 0:
             assert(update > 0)
@@ -426,6 +435,7 @@ class CProduction(Base):
                         rhs=rhs,
                         parent=parent,
                         landmark_class=lmk_class,
+                        landmark_orientation_relations=lmk_ori_rels,
                         relation=rel,
                         relation_distance_class=dist_class,
                         relation_degree_class=deg_class,
