@@ -129,7 +129,7 @@ if __name__ == '__main__':
                    pos=row[1],
                    landmark=row[2],
                    landmark_class=row[3],
-                   landmrk_orientation_relations=row[4],
+                   landmark_orientation_relations=row[4],
                    relation=row[5],
                    relation_distance_class=row[6],
                    relation_degree_class=row[7],
