@@ -24,7 +24,7 @@ class Speaker(object):
             print "Not getting head on viewpoint!!!"
             return self.location
 
-    def describe(self, trajector, scene, visualize=False, max_level=-1, delimit_chunks=False):
+    def sample_meaning(self, trajector, scene, max_level=-1):
 
         scenes = scene.get_child_scenes(trajector) + [scene]
 
@@ -55,11 +55,22 @@ class Speaker(object):
         # print '   ', sampled_relation, sr_prob, sr_ent
         sampled_relation = sampled_relation( head_on, sampled_landmark, trajector )
 
+        return sampled_landmark, sampled_relation, head_on
+
+    def describe(self, trajector, scene, visualize=False, max_level=-1, delimit_chunks=False):
+
+        sampled_landmark, sampled_relation, head_on = self.sample_meaning(trajector, scene, max_level)
+
         description = str(trajector.representation.middle) + '; ' + language_generator.describe(head_on, trajector, sampled_landmark, sampled_relation, delimit_chunks)
         print description
 
         if visualize: self.visualize(scene, trajector, head_on, sampled_landmark, sampled_relation, description, 0.01)
         return description
+
+    def get_all_meaning_descriptions(self, trajector, scene, sampled_landmark=None, sampled_relation=None, head_on=None, max_level=-1):
+        if sampled_landmark is None or sampled_relation is None or head_on is None:
+            sampled_landmark, sampled_relation, head_on = self.sample_meaning(trajector, scene, max_level)
+        return language_generator.get_all_descriptions(head_on, trajector, sampled_landmark, sampled_relation)
 
     def communicate(self, scene, visualize=False, max_level=-1, delimit_chunks=False):
         all_landmarks = []
@@ -115,7 +126,7 @@ class Speaker(object):
             else:
                 par_options = []
 
-            options = set(options).difference(set(par_options))
+            options = sorted(set(options).difference(set(par_options)))
             self.set_orientations(par_lmk, perspective)
 
         landmark.ori_relations = map(type, options)

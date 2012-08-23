@@ -86,12 +86,13 @@ if __name__ == '__main__':
     #speaker.talk_to_baby(scene, perspectives, how_many_each=10)
 
 
-    dozen = 5000
+    dozen = 1
     couple = 2
     for i in range(couple * dozen):
         location = Landmark( 'point', PointRepresentation(Vec2(random()*0.8-0.4,random()*0.6+0.4)), None, Landmark.POINT)
         trajector = location#obj2
-        speaker.describe(trajector, scene, False, 1)
+        # speaker.describe(trajector, scene, False, 1)
+        speaker.get_all_meaning_descriptions(trajector, scene, 1)
     # location = Vec2(5.68, 5.59)##Vec2(5.3, 5.5)
     # speaker.demo(location, scene)
     # all_desc = speaker.get_all_descriptions(location, scene, 1)
