@@ -50,7 +50,7 @@ def save_tree(tree, loc, rel, lmk, parent=None):
             # LANDMARK has the same landmark as its parent LANDMARK-PHRASE
             prod.landmark = parent.landmark
             prod.landmark_class = parent.landmark_class
-            prod.landmark_orientation_relations = get_lmk_ori_rels_str(lmk)
+            prod.landmark_orientation_relations = parent.landmark_orientation_relations
 
         # save subtrees, keeping track of parent
         for subtree in tree:

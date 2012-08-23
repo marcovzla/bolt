@@ -3,7 +3,6 @@
 
 from __future__ import division
 
-import sys
 from operator import itemgetter
 
 import utils
@@ -12,6 +11,7 @@ from utils import (get_meaning, categorical_sample, parent_landmark,
 from models import Word, Production, CProduction, CWord
 
 from location_from_sentence import get_sentence_posteriors, get_sentence_meaning_likelihood
+from table2d.run import construct_training_scene
 
 import numpy as np
 
@@ -36,6 +36,9 @@ def get_expansion(lhs, parent=None, lmk=None, rel=None):
             dist_class = (rel.measurement.best_distance_class if hasattr(rel, 'measurement') else None)
             deg_class = (rel.measurement.best_degree_class if hasattr(rel, 'measurement') else None)
 
+            if lmk and lmk_class not in ['TABLE', 'MIDDLE'] and lmk_ori_rels == ',,,':
+                print 'CRAP Could not expand %s (parent: %s, lmk_class: %s, lmk_ori_rels: %s, rel: %s, dist_class: %s, deg_class: %s)' % (n, parent, lmk_class, lmk_ori_rels, rel_class, dist_class, deg_class)
+
             cp_db = CProduction.get_production_counts(lhs=n,
                                                       parent=parent,
                                                       lmk_class=lmk_class,
@@ -45,7 +48,7 @@ def get_expansion(lhs, parent=None, lmk=None, rel=None):
                                                       deg_class=deg_class)
 
             if cp_db.count() <= 0:
-                print 'Could not expand %s (parent: %s, lmk_class: %s, rel: %s, dist_class: %s, deg_class: %s)' % (n, parent, lmk_class, rel_class, dist_class, deg_class)
+                print 'Could not expand %s (parent: %s, lmk_class: %s, lmk_ori_rels: %s, rel: %s, dist_class: %s, deg_class: %s)' % (n, parent, lmk_class, lmk_ori_rels, rel_class, dist_class, deg_class)
                 terminals.append( n )
                 continue
 
@@ -176,8 +179,8 @@ class Meaning(object):
         self.args = args
 
 
-def generate_sentence(loc, consistent, scene=None):
-    utils.scene = utils.ModelScene(scene)
+def generate_sentence(loc, consistent, scene=None, speaker=None):
+    utils.scene = utils.ModelScene(scene, speaker)
 
     (lmk, lmk_prob, lmk_ent), (rel, rel_prob, rel_ent) = get_meaning(loc=loc)
     meaning1 = m2s(lmk, rel)
@@ -226,11 +229,25 @@ def generate_sentence(loc, consistent, scene=None):
         return meaning, sentence
 
 
-def confidence(p, H):
-    return (H + np.log(p)) / H
+def compute_update_sigmoid_confidence(p_gen, p_corr, H_gen, H_corr):
+    deviation_gen  = (H_gen + np.log(p_gen)) / H_gen
+    deviation_corr = (H_corr + np.log(p_corr)) / H_corr
+    c_gen  = 1.0 / (1.0 + np.exp(-deviation_gen))
+    c_corr = 1.0 / (1.0 + np.exp(-deviation_corr))
+    return np.sqrt(c_gen * c_corr)
 
 
-def accept_correction( meaning, correction ):
+def compute_update_geometric(p_gen, p_corr, H_gen, H_corr):
+    return np.sqrt(p_gen * p_corr)
+
+
+update_funcs = {
+    'sigmoid_confidence': compute_update_sigmoid_confidence,
+    'geometric': compute_update_geometric,
+}
+
+
+def accept_correction( meaning, correction, update_func='geometric', update_scale=10 ):
     (lmk, lmk_prob, lmk_ent,
      rel, rel_prob, rel_ent,
      rel_exp_chain, rele_prob_chain, rele_ent_chain, rel_terminals, rel_landmarks,
@@ -240,15 +257,9 @@ def accept_correction( meaning, correction ):
 
     old_meaning_prob, old_meaning_entropy, lrpc, tps = get_sentence_meaning_likelihood( correction, lmk, rel )
 
-    scale = 10
-    learning_factor = 1000
-    c1 = confidence(lmk_prob * rel_prob, lmk_ent + rel_ent)
-    c2 = confidence(old_meaning_prob, old_meaning_entropy)
+    update = update_funcs[update_func](lmk_prob * rel_prob, old_meaning_prob, lmk_ent + rel_ent, old_meaning_entropy) * update_scale
 
-    if c1 + c2 <= 0: return # update the semantics
-
-    update = (c1 + c2) * scale * learning_factor
-    print 'lmk_prob, lmk_ent, rel_prob, rel_ent, old_meaning_prob, old_meaning_entropy, c1, c2, update', lmk_prob, lmk_ent, rel_prob, rel_ent, old_meaning_prob, old_meaning_entropy, c1, c2, update
+    print 'lmk_prob, lmk_ent, rel_prob, rel_ent, old_meaning_prob, old_meaning_entropy, update', lmk_prob, lmk_ent, rel_prob, rel_ent, old_meaning_prob, old_meaning_entropy, update
     print lmk.object_class, type(rel)
 
     dec_update = -update
@@ -297,7 +308,8 @@ if __name__ == '__main__':
     parser.add_argument('--consistent', action='store_true')
     args = parser.parse_args()
 
-    meaning, sentence = generate_sentence(args.location.xy, args.consistent)
+    scene, speaker = construct_training_scene()
+    meaning, sentence = generate_sentence(args.location.xy, args.consistent, scene, speaker)
     print 'sentence:', sentence
     correction = raw_input('Correction? ')
     accept_correction( meaning, correction)

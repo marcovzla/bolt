@@ -47,7 +47,7 @@ def get_tree_probs(tree, lmk=None, rel=None):
         lmk = parent_landmark(lmk)
 
     lmk_class = (lmk.object_class if lmk and lhs != 'LOCATION-PHRASE' else None)
-    lmk_ori_rels = get_lmk_ori_rels_str(lmk)
+    lmk_ori_rels = get_lmk_ori_rels_str(lmk) if lhs != 'LOCATION-PHRASE' else None
     rel_class = rel_type(rel) if lhs != 'LOCATION-PHRASE' else None
     dist_class = (rel.measurement.best_distance_class if hasattr(rel, 'measurement') and lhs != 'LOCATION-PHRASE' else None)
     deg_class = (rel.measurement.best_degree_class if hasattr(rel, 'measurement') and lhs != 'LOCATION-PHRASE' else None)
@@ -65,8 +65,12 @@ def get_tree_probs(tree, lmk=None, rel=None):
         #     print 'Could not expand %s (parent: %s, lmk_class: %s, rel: %s, dist_class: %s, deg_class: %s)' % (n, parent, lmk_class, rel_class, dist_class, deg_class)
         #     terminals.append( n )
         #     continue
+        try:
+            ckeys, ccounts = zip(*[(cprod.rhs,cprod.count) for cprod in cp_db.all()])
+        except:
+            print lhs,parent,lmk_class,lmk_ori_rels,rel_class,dist_class,deg_class
+            exit(1)
 
-        ckeys, ccounts = zip(*[(cprod.rhs,cprod.count) for cprod in cp_db.all()])
 
         ccounter = {}
         for cprod in cp_db.all():

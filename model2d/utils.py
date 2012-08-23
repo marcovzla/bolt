@@ -54,6 +54,7 @@ class ModelScene(object):
             self.table = table
 
         self.table = self.scene.landmarks['table']
+        print self.table.representation.get_geometry()
         # there is a person standing at this location
         # he will be our reference
         if speaker is None:
