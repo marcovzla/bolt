@@ -31,7 +31,7 @@ class_to_words = {
     Landmark.POINT:    {'N' : ['point']},
     FromRelation:      {'P' : ['from']},
     ToRelation:        {'P' : ['to']},
-    NextToRelation:    {'P' : ['next to', 'at', 'by']},
+    NextToRelation:    {'P' : ['at', 'by']},#['next to', 'at', 'by']},
     OnRelation:        {'P' : ['on']},
     InFrontRelation:   {'P' : ['in front of'], 'A' : ['front', 'near']},
     BehindRelation:    {'P' : ['behind'], 'A' : ['back', 'far']},
@@ -148,7 +148,8 @@ def get_all_descriptions(perspective, trajector, landmark, relation, the_point_i
     lmk_descs = get_all_landmark_descriptions(perspective, trajector, landmark)
     rel_descs = get_all_relation_descriptions(relation)
 
-    return [' '.join(tup) for tup in product(rel_descs, lmk_descs)]
+    return [' '.join(tup).strip() for tup in product(rel_descs, lmk_descs)]
+
 
 def phrases_to_meaning(phrases):
     m = []

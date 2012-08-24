@@ -120,6 +120,8 @@ class Color(object):
     BLACK = 'BLACK'
     WHITE = 'WHITE'
 
+    all = [RED,GREEN,PURPLE,BLUE,PINK,ORANGE,YELLOW,BLACK,WHITE]
+
 
 class ObjectClass(object):
     TABLE = 'TABLE'
@@ -128,6 +130,7 @@ class ObjectClass(object):
     BOTTLE = 'BOTTLE'
     PRISM= 'PRISM'
 
+    all = [TABLE, CHAIR, CUP, BOTTLE, PRISM]
 
 class Landmark(object):
     EDGE = 'EDGE'
@@ -138,6 +141,8 @@ class Landmark(object):
     SIDE = 'SIDE'
     LINE = 'LINE'
     POINT = 'POINT'
+
+    all = [EDGE,CORNER,MIDDLE,HALF,END,SIDE,LINE,POINT]
 
     def __init__(self, name, representation, parent, object_class=None, color=None):
         self.name = name

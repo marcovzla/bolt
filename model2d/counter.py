@@ -6,7 +6,7 @@ from __future__ import division
 import csv
 
 from models import (Location, Word, Production, Bigram, Trigram,
-                    CWord, CProduction, session)
+                    CWord, CProduction, SentenceParse, session)
 from utils import parent_landmark, count_lmk_phrases, get_meaning, rel_type, lmk_id, get_lmk_ori_rels_str
 
 from nltk.tree import ParentedTree
@@ -43,6 +43,7 @@ def save_tree(tree, loc, rel, lmk, parent=None):
             prod.landmark = lmk_id(lmk)
             prod.landmark_class = lmk.object_class
             prod.landmark_orientation_relations = get_lmk_ori_rels_str(lmk)
+            prod.landmark_color = lmk.color
             # next landmark phrase will need the parent landmark
             lmk = parent_landmark(lmk)
 
@@ -51,11 +52,11 @@ def save_tree(tree, loc, rel, lmk, parent=None):
             prod.landmark = parent.landmark
             prod.landmark_class = parent.landmark_class
             prod.landmark_orientation_relations = parent.landmark_orientation_relations
+            prod.landmark_color = parent.landmark_color
 
         # save subtrees, keeping track of parent
         for subtree in tree:
             save_tree(subtree, loc, rel, lmk, prod)
-
 
 
 if __name__ == '__main__':
@@ -69,11 +70,14 @@ if __name__ == '__main__':
     reader = csv.reader(args.csvfile, lineterminator='\n')
     next(reader)  # skip headers
 
+    unique_sentences = {}
+
     for i,row in enumerate(reader, start=1):
         print 'sentence', i
 
         # unpack row
         xloc, yloc, sentence, parse, modparse = row
+        unique_sentences[sentence] = (parse, modparse)
 
         # convert variables to the right types
         xloc = float(xloc)
@@ -84,6 +88,10 @@ if __name__ == '__main__':
 
         # how many ancestors should the sampled landmark have?
         num_ancestors = count_lmk_phrases(modparse) - 1
+
+        if num_ancestors == -1:
+            print 'Failed to parse %d [%s] [%s] [%s]' % (i, sentence, parse, modparse)
+            continue
 
         # sample `args.iterations` times for each sentence
         for _ in xrange(args.iterations):
@@ -109,14 +117,16 @@ if __name__ == '__main__':
             save_tree(modparse, location, rel, lmk)
             Bigram.make_bigrams(location.words)
             Trigram.make_trigrams(location.words)
-            session.commit()
 
+    for sentence,(parse,modparse) in unique_sentences.items():
+        SentenceParse.add_sentence_parse_blind(sentence, parse, modparse)
 
+    session.commit()
 
     # count words
     parent = aliased(Production)
     qry = session.query(Word.word, Word.pos,
-                        parent.landmark, parent.landmark_class, parent.landmark_orientation_relations,
+                        parent.landmark, parent.landmark_class, parent.landmark_orientation_relations, parent.landmark_color,
                         parent.relation, parent.relation_distance_class,
                         parent.relation_degree_class, func.count(Word.id)).\
                   join(parent, Word.parent).\
@@ -130,15 +140,16 @@ if __name__ == '__main__':
                    landmark=row[2],
                    landmark_class=row[3],
                    landmark_orientation_relations=row[4],
-                   relation=row[5],
-                   relation_distance_class=row[6],
-                   relation_degree_class=row[7],
-                   count=row[8])
+                   landmark_color=row[5],
+                   relation=row[6],
+                   relation_distance_class=row[7],
+                   relation_degree_class=row[8],
+                   count=row[9])
 
     # count productions with no parent
     parent = aliased(Production)
     qry = session.query(Production.lhs, Production.rhs,
-                        Production.landmark, Production.landmark_class, Production.landmark_orientation_relations,
+                        Production.landmark, Production.landmark_class, Production.landmark_orientation_relations, Production.landmark_color,
                         Production.relation, Production.relation_distance_class,
                         Production.relation_degree_class, func.count(Production.id)).\
                   filter_by(parent=None).\
@@ -152,15 +163,16 @@ if __name__ == '__main__':
                          landmark=row[2],
                          landmark_class=row[3],
                          landmark_orientation_relations=row[4],
-                         relation=row[5],
-                         relation_distance_class=row[6],
-                         relation_degree_class=row[7],
-                         count=row[8])
+                         landmark_color=row[5],
+                         relation=row[6],
+                         relation_distance_class=row[7],
+                         relation_degree_class=row[8],
+                         count=row[9])
 
     # count productions with parent
     parent = aliased(Production)
     qry = session.query(Production.lhs, Production.rhs,
-                        parent.lhs, Production.landmark, Production.landmark_class, Production.landmark_orientation_relations,
+                        parent.lhs, Production.landmark, Production.landmark_class, Production.landmark_orientation_relations, Production.landmark_color,
                         Production.relation, Production.relation_distance_class,
                         Production.relation_degree_class, func.count(Production.id)).\
                   join(parent, Production.parent).\
@@ -175,9 +187,10 @@ if __name__ == '__main__':
                          landmark=row[3],
                          landmark_class=row[4],
                          landmark_orientation_relations=row[5],
-                         relation=row[6],
-                         relation_distance_class=row[7],
-                         relation_degree_class=row[8],
-                         count=row[9])
+                         landmark_color=row[6],
+                         relation=row[7],
+                         relation_distance_class=row[8],
+                         relation_degree_class=row[9],
+                         count=row[10])
 
     session.commit()

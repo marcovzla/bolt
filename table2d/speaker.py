@@ -1,13 +1,13 @@
-from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRelationSet, VeryCloseDistanceRelation
 from numpy import array, arange, zeros, log, argmin, set_printoptions, random
 from random import choice
 from matplotlib import pyplot as plt
-from landmark import PointRepresentation, LineRepresentation, GroupLineRepresentation, RectangleRepresentation, Landmark
-from planar import Vec2
-import sys
 from textwrap import wrap
+from itertools import product
+from planar import Vec2
+
 import language_generator
-from landmark import Landmark
+from landmark import PointRepresentation, LineRepresentation, GroupLineRepresentation, RectangleRepresentation, Landmark
+from relation import DistanceRelationSet, ContainmentRelationSet, OrientationRelationSet
 
 
 
@@ -176,9 +176,10 @@ class Speaker(object):
         self.visualize(scene, poi, head_on, sampled_landmark, sampled_relation, description, step=0.1)
         '''
 
+    '''
     # broken!
     def get_all_descriptions(self, poi, scene, max_level=-1):
-        '''
+
         all_desc = []
         scenes = scene.get_child_scenes(poi) + [scene]
         counter = 0
@@ -219,8 +220,7 @@ class Speaker(object):
 
 
         return reversed(sorted(all_desc))
-        '''
-
+    '''
 
     def get_probabilities_box(self, bounding_box, relation, perspective, landmark, step=0.02):
         xs = arange(bounding_box.min_point.x, bounding_box.max_point.x, step)

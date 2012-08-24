@@ -22,11 +22,15 @@ class Degree(object):
     SOMEWHAT = 'DegreeSomewhat'
     VERY     = 'DegreeVery'
 
+    all = [NONE, SOMEWHAT, VERY]
+
 
 class Measurement(object):
     NONE = 'MeasurementNone'
     FAR  = 'MeasurementFar'
     NEAR = 'MeasurementNear'
+
+    all = [NONE, FAR, NEAR]
 
     def __init__(self, distance, required=True, distance_class=None, degree_class=None):
         self.distance_classes = {
@@ -68,6 +72,7 @@ class Measurement(object):
         mu,std,sign = self.distance_classes[distance_class]
         mult = self.degree_classes[degree_class]
 
+        # 630 seconds in 3151809 calls
         p = norm.cdf(self.distance, mu * (mult ** sign), std)
         if sign < 0: p = 1 - p
         return p

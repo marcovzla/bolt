@@ -160,6 +160,7 @@ class CWord(Base):
     landmark = Column(Integer)
     landmark_class = Column(Integer)
     landmark_orientation_relations = Column(String)
+    landmark_color = Column(String)
     relation = Column(String)
     relation_distance_class = Column(Integer)
     relation_degree_class = Column(Integer)
@@ -173,6 +174,7 @@ class CWord(Base):
                         lmk=None,
                         lmk_class=None,
                         lmk_ori_rels=None,
+                        lmk_color=None,
                         rel=None,
                         rel_dist_class=None,
                         rel_deg_class=None):
@@ -187,6 +189,8 @@ class CWord(Base):
             q = q.filter(CWord.landmark_class==lmk_class)
         if lmk_ori_rels is not None:
             q = q.filter(CWord.landmark_orientation_relations==lmk_ori_rels)
+        if lmk_color is not None:
+            q = q.filter(CWord.landmark_color==lmk_color)
         if rel != None:
             q = q.filter(CWord.relation==rel)
         if rel_dist_class != None:
@@ -204,10 +208,11 @@ class CWord(Base):
                            lmk=None,
                            lmk_class=None,
                            lmk_ori_rels=None,
+                           lmk_color=None,
                            rel=None,
                            rel_dist_class=None,
                            rel_deg_class=None):
-        cp_db = cls.get_word_counts(pos, word, lmk, lmk_class, lmk_ori_rels, rel, rel_dist_class, rel_deg_class)
+        cp_db = cls.get_word_counts(pos, word, lmk, lmk_class, lmk_ori_rels, lmk_color, rel, rel_dist_class, rel_deg_class)
 
         if cp_db.count() <= 0:
             assert(update > 0)
@@ -216,6 +221,7 @@ class CWord(Base):
                   landmark=lmk_id(lmk),
                   landmark_class=lmk_class,
                   landmark_orientation_relations=lmk_ori_rels,
+                  landmark_color=lmk_color,
                   relation=rel,
                   relation_distance_class=rel_dist_class,
                   relation_degree_class=rel_deg_class,
@@ -228,11 +234,11 @@ class CWord(Base):
 
             ccounter = {}
             for cword in cp_db.all():
-                print cword.word, cword.count
+                # print cword.word, cword.count
                 if cword.word in ccounter: ccounter[cword.word] += cword.count
                 else: ccounter[cword.word] = cword.count
 
-            print '----------------'
+            # print '----------------'
 
             ckeys, ccounts = zip(*ccounter.items())
 
@@ -244,9 +250,8 @@ class CWord(Base):
             for cword in cp_db.all():
                 if cword.count <= -ups[cword.word]: cword.count = 1
                 else: cword.count += ups[cword.word]
-                print cword.word, cword.count
+                # print cword.word, cword.count
 
-        session.flush()
         session.commit()
 
     def __unicode__(self):
@@ -308,6 +313,7 @@ class Production(Base):
     landmark = Column(Integer)
     landmark_class = Column(Integer)
     landmark_orientation_relations = Column(String)
+    landmark_color = Column(String)
     relation = Column(String)
     relation_distance_class = Column(Integer)
     relation_degree_class = Column(Integer)
@@ -344,27 +350,6 @@ class Production(Base):
 
         return q
 
-    @classmethod
-    def delete_productions(cls, limit, rhs, lhs=None, parent=None, lmk=None, rel=None):
-        q = cls.query
-
-        if lhs is not None:
-            q = q.filter(Production.lhs==lhs)
-
-        if lmk is not None:
-            q = q.filter(Production.landmark==lmk)
-
-        if rel is not None:
-            q = q.filter(Production.relation==rel)
-
-        if parent is not None:
-            q = q.join(Production.parent, aliased=True).\
-                  filter(Production.lhs==parent).\
-                  reset_joinpoint()
-
-        ret = q.limit(limit).delete()
-        session.commit()
-        return ret
 
 class CProduction(Base):
     id = Column(Integer, primary_key=True)
@@ -377,6 +362,7 @@ class CProduction(Base):
     landmark = Column(Integer)
     landmark_class = Column(Integer)
     landmark_orientation_relations = Column(String)
+    landmark_color = Column(String)
     relation = Column(String)
     relation_distance_class = Column(Integer)
     relation_degree_class = Column(Integer)
@@ -393,6 +379,7 @@ class CProduction(Base):
                               parent=None,
                               lmk_class=None,
                               lmk_ori_rels=None,
+                              lmk_color=None,
                               rel=None,
                               dist_class=None,
                               deg_class=None):
@@ -407,6 +394,8 @@ class CProduction(Base):
             q = q.filter(CProduction.landmark_class==lmk_class)
         if lmk_ori_rels is not None:
             q = q.filter(CProduction.landmark_orientation_relations==lmk_ori_rels)
+        if lmk_color is not None:
+            q = q.filter(CProduction.landmark_color==lmk_color)
         if rel != None:
             q = q.filter(CProduction.relation==rel)
         if dist_class != None:
@@ -424,10 +413,11 @@ class CProduction(Base):
                                  parent=None,
                                  lmk_class=None,
                                  lmk_ori_rels=None,
+                                 lmk_color=None,
                                  rel=None,
                                  dist_class=None,
                                  deg_class=None):
-        cp_db = cls.get_production_counts(lhs,rhs,parent,lmk_class,lmk_ori_rels,rel,dist_class,deg_class)
+        cp_db = cls.get_production_counts(lhs,rhs,parent,lmk_class,lmk_ori_rels,lmk_color,rel,dist_class,deg_class)
 
         if cp_db.count() <= 0:
             assert(update > 0)
@@ -436,6 +426,7 @@ class CProduction(Base):
                         parent=parent,
                         landmark_class=lmk_class,
                         landmark_orientation_relations=lmk_ori_rels,
+                        landmark_color=lmk_color,
                         relation=rel,
                         relation_distance_class=dist_class,
                         relation_degree_class=deg_class,
@@ -448,11 +439,11 @@ class CProduction(Base):
 
             ccounter = {}
             for cprod in cp_db.all():
-                print cprod.rhs, cprod.count
+                # print cprod.rhs, cprod.count
                 if cprod.rhs in ccounter: ccounter[cprod.rhs] += cprod.count
                 else: ccounter[cprod.rhs] = cprod.count
 
-            print '----------------'
+            # print '----------------'
 
             ckeys, ccounts = zip(*ccounter.items())
 
@@ -464,9 +455,8 @@ class CProduction(Base):
             for cprod in cp_db.all():
                 if cprod.count <= -ups[cprod.rhs]: cprod.count = 1
                 else: cprod.count += ups[cprod.rhs]
-                print cprod.rhs, cprod.count
+                # print cprod.rhs, cprod.count
 
-        session.flush()
         session.commit()
 
 class WordCPT(Base):
@@ -595,8 +585,37 @@ class ExpansionCPT(Base):
         return
 
 
+class SentenceParse(Base):
+    id = Column(Integer, primary_key=True)
 
+    sentence = Column(String)
+    original_parse = Column(String)
+    modified_parse = Column(String)
 
+    @classmethod
+    def get_sentence_parse(cls, sentence, orig_parse=None, mod_parse=None):
+        q = cls.query
+        q = q.filter(SentenceParse.sentence==sentence)
+
+        # if orig_parse != None:
+        #     q = q.filter(SentenceParses.original_parse==orig_parse)
+
+        return q
+
+    @classmethod
+    def add_sentence_parse(cls, sentence, orig_parse, mod_parse):
+        sp_db = cls.get_sentence_parse(sentence, orig_parse, mod_parse)
+        if sp_db.count() <= 0:
+            SentenceParse(sentence=sentence,
+                          original_parse=orig_parse,
+                          modified_parse=mod_parse)
+            session.commit()
+
+    @classmethod
+    def add_sentence_parse_blind(cls, sentence, orig_parse, mod_parse):
+        SentenceParse(sentence=sentence,
+                      original_parse=orig_parse,
+                      modified_parse=mod_parse)
 
 
 

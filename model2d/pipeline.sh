@@ -5,7 +5,7 @@ echo "parsing sentences ..."
 # remove the "The point is" part at the beginning of each sentence
 if test "location_descriptions.csv" -nt "parses.csv"
 then
-cat location_descriptions.csv | grep table | perl -pe "s/The point is //" | python parse.py > parses.csv
+cat location_descriptions.csv | perl -pe "s/The point is //" | python parse.py > parses.csv
 fi
 
 

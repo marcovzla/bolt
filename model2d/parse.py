@@ -9,6 +9,8 @@ import glob
 import tempfile
 import fileinput
 import subprocess
+from models import SentenceParse
+from sqlalchemy.orm.exc import NoResultFound
 
 
 
@@ -70,7 +72,7 @@ def parse_generator_data(datafile):
     xlocs, ylocs, sentences = [], [], []
     # this is how each observation looks like
     # for example: Vec2(5.31, 5.11); on the table
-    pattern = r'^Vec2\((?P<x>[0-9.]+), (?P<y>[0-9.]+)\); (?P<sent>.+)$'
+    pattern = r'^Vec2\((?P<x>-?[0-9.]+), (?P<y>-?[0-9.]+)\); (?P<sent>.+)$'
     for line in datafile:
         match = re.match(pattern, line)
         if match:
@@ -83,11 +85,19 @@ def parse_generator_data(datafile):
 
 def get_modparse(sentence):
     """returns the modified parse tree for a sentence"""
-    parsetree = parse_sentences([sentence])[0]
-    modparsetree = modify_parses([parsetree])[0]
+    sp_db = SentenceParse.get_sentence_parse(sentence)
+
+    try:
+        res = sp_db.one()
+        modparsetree = res.modified_parse
+    except NoResultFound:
+        parsetree = parse_sentences([sentence])[0]
+        modparsetree = modify_parses([parsetree])[0]
+        SentenceParse.add_sentence_parse(sentence, parsetree, modparsetree)
+
     return modparsetree
 
-    
+
 
 if __name__ == '__main__':
     # parse data from file or stdin
