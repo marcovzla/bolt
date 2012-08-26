@@ -1,4 +1,4 @@
-% NOTE seems this is not happening with the new data 8/18/2010
-LOCATION-PHRASE < (RB=rb $+ PP=pp)
+NP [ <1 NP & <2 (PP <-1 NP=np) & <3 PP=pp ]
 
-move rb >1 pp
+adjoinF (NP @) np
+move pp $- np

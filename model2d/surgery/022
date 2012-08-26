@@ -1,0 +1,4 @@
+LOCATION-PHRASE [ < (NP=np < NNP=nnp) & < (LANDMARK-PHRASE < LANDMARK=lmk) ]
+
+move nnp >-1 lmk
+delete np

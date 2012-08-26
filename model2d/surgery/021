@@ -1,0 +1,5 @@
+LOCATION-PHRASE [ <1 IN=in & <2 NP=np ]
+
+adjoinF (RELATION @) in
+adjoinF (LANDMARK-PHRASE @) np
+relabel np LANDMARK

@@ -1,6 +1,5 @@
-LANDMARK-PHRASE < (NP=lmk $+ (PP=pp < ((IN=of < of) $+ NP=obj)))
+PP=rel [ > LOCATION-PHRASE=loc & <-1 NP=lmk ]
 
-relabel lmk LANDMARK
-relabel of OF
-relabel obj LANDMARK-PHRASE
-excise pp pp
+relabel rel RELATION
+move lmk >-1 loc
+relabel lmk LANDMARK-PHRASE
