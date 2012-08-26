@@ -225,25 +225,12 @@ class Speaker(object):
     def get_probabilities_box(self, bounding_box, relation, perspective, landmark, step=0.02):
         xs = arange(bounding_box.min_point.x, bounding_box.max_point.x, step)
         ys = arange(bounding_box.min_point.y, bounding_box.max_point.y, step)
-
-        probabilities = zeros( (len(ys), len(xs)) )
-        points = zeros( (len(ys), len(xs)), dtype=object )
-
-        for i,x in enumerate(xs):
-            for j,y in enumerate(ys):
-                p = Landmark( None, PointRepresentation( Vec2(x,y) ), None, None )
-                points[j,i] = p
-                rel = relation( perspective, landmark, p )
-                probabilities[j,i] = rel.is_applicable()
-
+        points = array(list(product(xs,ys)))
+        if isinstance(relation,type):
+            probabilities = relation.any_are_applicable(perspective, landmark, points)
+        else:
+            probabilities = relation.are_applicable(points)
         return probabilities, points
-
-    def get_probabilities_points(self, points, relation, perspective, landmark):
-        probabilities = zeros( (len(points)) )
-        for i,p in enumerate(points):
-            rel = relation( perspective, landmark, p )
-            probabilities[i]  = rel.is_applicable()
-        return probabilities
 
     def get_probabilities(self, scene, relation, perspective, landmark, step=0.02):
         scene_bb = scene.get_bounding_box()
@@ -337,12 +324,10 @@ class Speaker(object):
         """
         Sample a point of interest given a relation and landmark.
         """
-        #points = landmark.representation.sample_points(step=step)
-        #probs = self.get_probabilities_points(points, relation, perspective, landmark)
         probs, points = self.get_probabilities_box(bounding_box, relation, perspective, landmark)
         probs /= probs.sum()
         index = probs.cumsum().searchsorted( random.sample(1) )[0]
-        return Landmark( 'point', points.flatten()[index], None, Landmark.POINT )
+        return Landmark( 'point', Vec2( *points[index] ), None, Landmark.POINT )
 
     def get_entropy(self, probabilities):
         probabilities += 1e-15
@@ -351,7 +336,10 @@ class Speaker(object):
 
     def visualize(self, scene, trajector, head_on, sampled_landmark, sampled_relation, description, step=0.02):
 
-        relation = type(sampled_relation)
+        relation = sampled_relation
+        print relation
+        if hasattr(relation, 'measurement'):
+            print relation.measurement, relation.measurement.best_distance_class, relation.measurement.best_degree_class
 
         plt.figure( figsize=(6,8) )
         #plt.subplot(1,2,1)
@@ -359,25 +347,31 @@ class Speaker(object):
         scene_bb = scene_bb.inflate( Vec2(scene_bb.width*0.5,scene_bb.height*0.5) )
         plt.axis([scene_bb.min_point.x, scene_bb.max_point.x, scene_bb.min_point.y, scene_bb.max_point.y])
 
+        probabilities, points = self.get_probabilities_box( scene_bb, relation, head_on, sampled_landmark, step )
+        # xs, ys = points[:,0], points[:,1]
 
         xs = arange(scene_bb.min_point.x, scene_bb.max_point.x, step)
         ys = arange(scene_bb.min_point.y, scene_bb.max_point.y, step)
 
-        probabilities = zeros(  ( len(ys),len(xs) )  )
-        for i,x in enumerate(xs):
-            for j,y in enumerate(ys):
-                rel = relation( head_on, sampled_landmark, Landmark('', PointRepresentation(Vec2(x,y)), None, None) )
-                if hasattr(rel, 'measurement'):
-                    rel.measurement.best_degree_class = sampled_relation.measurement.best_degree_class
-                    rel.measurement.best_distance_class = sampled_relation.measurement.best_distance_class
-                probabilities[j,i] = rel.is_applicable()
-                # print rel.distance, probabilities[j,i]
+        # probabilities = zeros(  ( len(ys),len(xs) )  )
+        # for i,x in enumerate(xs):
+        #     for j,y in enumerate(ys):
+        #         rel = relation( head_on, sampled_landmark, Landmark('', PointRepresentation(Vec2(x,y)), None, None) )
+        #         if hasattr(rel, 'measurement'):
+        #             rel.measurement.best_degree_class = sampled_relation.measurement.best_degree_class
+        #             rel.measurement.best_distance_class = sampled_relation.measurement.best_distance_class
+        #         probabilities[j,i] = rel.is_applicable()
+        #         # print rel.distance, probabilities[j,i]
 
         set_printoptions(threshold='nan')
         #print probabilities
 
         x = array( [list(xs-step*0.5)]*len(ys) )
         y = array( [list(ys-step*0.5)]*len(xs) ).T
+
+        probabilities = probabilities.reshape( (len(xs),len(ys)) ).T
+
+        # print probabilities
 
         #print self.get_entropy(probabilities)
         plt.pcolor(x, y, probabilities, cmap = 'jet', edgecolors='none', alpha=0.7)

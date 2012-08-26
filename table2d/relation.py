@@ -1,9 +1,10 @@
 from random import choice
-from numpy import array, random
+from numpy import array, random, zeros, maximum
 from scipy.stats import norm
 from planar import Vec2, Affine
 from planar.line import LineSegment, Ray
 from landmark import PointRepresentation
+from itertools import product
 
 class Relation(object):
     def __init__(self, perspective, landmark, trajector):
@@ -32,24 +33,28 @@ class Measurement(object):
 
     all = [NONE, FAR, NEAR]
 
-    def __init__(self, distance, required=True, distance_class=None, degree_class=None):
-        self.distance_classes = {
-            Measurement.FAR: (0.55, 0.05, 1),
-            Measurement.NEAR: (0.15, 0.05, -1)
-        }
+    distance_classes = {
+        NONE: (-100, 0.05, 1),
+        FAR:  (0.55, 0.05, 1),
+        NEAR: (0.15, 0.05, -1),
+    }
 
+    degree_classes = {
+        Degree.NONE: 1,
+        Degree.SOMEWHAT: 0.75,
+        Degree.VERY: 1.5,
+    }
+
+    def __init__(self, distance, required=True, distance_class=None, degree_class=None):
+
+        self.distance_classes = Measurement.distance_classes.copy()
         if distance_class is not None:
             self.distance_classes = { distance_class: self.distance_classes[distance_class] }
 
         if not required:
-            self.distance_classes[Measurement.NONE] = (-100, 0.05, 1)
+            self.distance_classes[Measurement.NONE] = Measurement.distance_classes[Measurement.NONE]
 
-        self.degree_classes = {
-            Degree.NONE: 1,
-            Degree.SOMEWHAT: 0.75,
-            Degree.VERY: 1.5
-        }
-
+        self.degree_classes = Measurement.degree_classes
         if degree_class is not None:
             self.degree_classes = { degree_class: self.degree_classes[degree_class] }
 
@@ -63,19 +68,15 @@ class Measurement(object):
         else:
             self.best_degree_class = self.best[1]
 
-    def is_applicable(self, degree_class=None, distance_class=None):
-        if degree_class is None:
-            degree_class = self.best_degree_class
-        if distance_class is None:
-            distance_class = self.best_distance_class
-
-        mu,std,sign = self.distance_classes[distance_class]
-        mult = self.degree_classes[degree_class]
-
-        # 630 seconds in 3151809 calls
-        p = norm.cdf(self.distance, mu * (mult ** sign), std)
-        if sign < 0: p = 1 - p
-        return p
+    def is_applicable(self):
+        degree_class = self.best_degree_class
+        distance_class = self.best_distance_class
+        return Measurement.get_applicability(self.distance, distance_class, degree_class)
+        
+    def are_applicable(self, distances):
+        degree_class = self.best_degree_class
+        distance_class = self.best_distance_class
+        return Measurement.get_applicability(distances, distance_class, degree_class)
 
     def evaluate_all(self):
         epsilon = 1e-6
@@ -83,7 +84,7 @@ class Measurement(object):
 
         for dist in self.distance_classes:
             for degree in self.degree_classes:
-                p = self.is_applicable(degree, dist) + epsilon
+                p = Measurement.get_applicability(self.distance, dist, degree) + epsilon
                 probs.append([p, degree, dist])
 
         ps, degrees, dists = zip(*probs)
@@ -94,7 +95,30 @@ class Measurement(object):
         return probs[index]
 
     def __repr__(self):
-        return 'Measurement< req: %i, bdegree: %i, bdistance: %i >' % (self.required, self.best_degree, self.best_distance)
+        return 'Measurement< req: %i, bdegree: %s, bdistance: %s >' % (self.required, self.best_degree_class, self.best_distance_class)
+        
+    @staticmethod
+    def get_applicability(distances, distance_class, degree_class):
+        mu,std,sign = Measurement.distance_classes[distance_class]
+        mult = Measurement.degree_classes[degree_class]
+        ps = norm.cdf(distances, mu * (mult ** sign), std)
+        if sign < 0: ps = 1 - ps
+        return ps
+
+    @staticmethod
+    def any_are_applicable(distances, required=False):
+        dist_classes = Measurement.distance_classes.copy()
+        if required:
+            del dist_classes[Measurement.NONE]
+        deg_classes = Measurement.degree_classes
+
+        # Get the best probability across all degrees and distances TODO: not?
+        last = zeros(distances.shape)
+        for distc,degc in product(dist_classes.keys(), deg_classes.keys()):
+            ps = Measurement.get_applicability(distances, distc, degc)
+            last = maximum(ps,last)
+
+        return last
 
 
 class DistanceRelation(Relation):
@@ -108,6 +132,19 @@ class DistanceRelation(Relation):
             return self.measurement.is_applicable()
         else:
             return 0.0
+
+    def are_applicable(self, point_array):
+        distances = zeros( point_array.shape[0] )
+        for i,point in enumerate(point_array):
+            distances[i] = self.landmark.representation.distance_to_point(point)
+        return self.measurement.are_applicable(distances)
+
+    @classmethod
+    def any_are_applicable(cls, perspective, landmark, point_array):
+        distances = zeros( point_array.shape[0] )
+        for i,point in enumerate(point_array):
+            distances[i] = landmark.representation.distance_to_point(point)
+        return Measurement.any_are_applicable(distances, required=True)
 
 
 class FromRelation(DistanceRelation):
@@ -140,6 +177,12 @@ class ContainmentRelation(Relation):
     def is_applicable(self):
         return float(self.landmark.representation.contains( self.trajector.representation ))
 
+    def are_applicable(self, point_array):
+        return array( [float(self.landmark.representation.contains_point( point )) for point in point_array] )
+
+    @classmethod
+    def any_are_applicable(cls, perspective, landmark, point_array):
+        return array( [float(landmark.representation.contains_point( point )) for point in point_array] )
 
 class OnRelation(ContainmentRelation):
     def __init__(self, perspective, landmark, trajector):
@@ -147,10 +190,24 @@ class OnRelation(ContainmentRelation):
 
 
 class OrientationRelation(Relation):
-    def __init__(self, perspective, landmark, trajector, orientation):
+    orientation = None
+
+    def __init__(self, perspective, landmark, trajector):
         super(OrientationRelation, self).__init__(perspective, landmark, trajector)
-        self.standard = Vec2(0,1)
-        self.orientation = orientation
+
+        self.ori_ray = OrientationRelation.get_orientation_ray(perspective, landmark)
+
+        # TODO make sure this works using .middle
+        self.projected = self.ori_ray.line.project(trajector.representation.middle)
+
+        self.distance = self.ori_ray.start.distance_to(self.projected)
+        self.measurement = Measurement(self.distance, required=False, distance_class=Measurement.FAR)
+        print 'xxx', self.measurement.best_degree_class, self.measurement.best_distance_class
+
+    @classmethod
+    def get_orientation_ray(cls, perspective, landmark):
+
+        standard_direction = Vec2(0,1)
 
         top_primary_axes = landmark.get_top_parent().get_primary_axes()
 
@@ -160,22 +217,19 @@ class OrientationRelation(Relation):
                 our_axis = axis
         assert( our_axis != None )
 
-        new_axis = our_axis.parallel(self.landmark.representation.middle)
+        new_axis = our_axis.parallel(landmark.representation.middle)
         new_perspective = new_axis.project(perspective)
 
-        p_segment = LineSegment.from_points( [new_perspective, self.landmark.representation.middle] )
+        p_segment = LineSegment.from_points( [new_perspective, landmark.representation.middle] )
 
-        angle = self.standard.angle_to(p_segment.vector)
+        angle = standard_direction.angle_to(p_segment.vector)
         rotation = Affine.rotation(angle)
-        o = [self.orientation]
+        o = [cls.orientation]
         rotation.itransform(o)
         direction = o[0]
-        self.ori_ray = Ray(p_segment.end, direction)
-        # TODO make sure this works using .middle
-        self.projected = self.ori_ray.line.project(trajector.representation.middle)
+        ori_ray = Ray(p_segment.end, direction)
 
-        self.distance = self.ori_ray.start.distance_to(self.projected)
-        self.measurement = Measurement(self.distance, required=False, distance_class=Measurement.FAR)
+        return ori_ray
 
     def is_applicable(self):
         if self.ori_ray.contains_point(self.projected) and not \
@@ -184,25 +238,54 @@ class OrientationRelation(Relation):
         else:
             return 0.0
 
+    def are_applicable(self, point_array):
+        applies = zeros( point_array.shape[0] )
+        for i,point in enumerate(point_array):
+            point = self.ori_ray.line.project(point)
+            applies[i] = self.ori_ray.contains_point(point) and not \
+                         self.landmark.representation.contains_point(point)
+        distances = zeros( point_array.shape[0] )
+        for i,point in enumerate(point_array):
+            distances[i] = self.ori_ray.start.distance_to(self.ori_ray.line.project(point))
+        return self.measurement.any_are_applicable(distances)*applies
+
+
+
+    @classmethod
+    def any_are_applicable(cls, perspective, landmark, point_array):
+        ori_ray = cls.get_orientation_ray(perspective, landmark)
+        distances = zeros( point_array.shape[0] )
+        for i,point in enumerate(point_array):
+            distances[i] = ori_ray.start.distance_to(ori_ray.line.project(point))
+        return Measurement.any_are_applicable(distances)
+
 
 class InFrontRelation(OrientationRelation):
+    orientation = Vec2(0,-1)
     def __init__(self, perspective, landmark, trajector):
-        super(InFrontRelation, self).__init__(perspective, landmark, trajector, Vec2(0,-1))
+        OrientationRelation.orientation = Vec2(0,-1)
+        super(InFrontRelation, self).__init__(perspective, landmark, trajector)
 
 
 class BehindRelation(OrientationRelation):
+    orientation = Vec2(0,1)
     def __init__(self, perspective, landmark, trajector):
-        super(BehindRelation, self).__init__(perspective, landmark, trajector, Vec2(0,1))
+        OrientationRelation.orientation = Vec2(0,1)
+        super(BehindRelation, self).__init__(perspective, landmark, trajector)
 
 
 class LeftRelation(OrientationRelation):
+    orientation = Vec2(-1,0)
     def __init__(self, perspective, landmark, trajector):
-        super(LeftRelation, self).__init__(perspective, landmark, trajector, Vec2(-1,0))
+        OrientationRelation.orientation = Vec2(-1,0)
+        super(LeftRelation, self).__init__(perspective, landmark, trajector)
 
 
 class RightRelation(OrientationRelation):
+    orientation = Vec2(1,0)
     def __init__(self, perspective, landmark, trajector):
-        super(RightRelation, self).__init__(perspective, landmark, trajector, Vec2(1,0))
+        OrientationRelation.orientation = Vec2(1,0)
+        super(RightRelation, self).__init__(perspective, landmark, trajector)
 
 
 class DistanceRelationSet(RelationSet):

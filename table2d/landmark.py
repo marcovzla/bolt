@@ -78,7 +78,8 @@ def bb_to_bb_manhattan_distance(bb1, bb2):
 def poly_to_edges(poly):
     edges = []
     for i in range(1, len(poly)):
-        edges.append( LineSegment.from_points( [poly[i-1],poly[i]]) )
+        edges.append( LineSegment.from_points([poly[i-1],poly[i]]) )
+    edges.append( LineSegment.from_points([poly[i],poly[0]]) )
     return edges
 
 def poly_to_vec_distance(poly, vec):
@@ -165,6 +166,7 @@ class Landmark(object):
         return self.get_top_parent().get_primary_axes()
 
     def distance_to(self, rep):
+        # TODO: Figure out how to do this projection, so that if the table's a line, near the side isn't a radius around a point
         #tpd = self.get_top_parent().distance_to(point)
         #if self.parent: point = self.parent.project_point(point)
         return self.representation.distance_to(rep)# + tpd
@@ -266,11 +268,17 @@ class PointRepresentation(AbstractRepresentation):
         else:
             return geo.distance_to(self.location)
 
+    def distance_to_point(self, xy):
+        return self.location.distance_to( xy )
+
     def contains(self, other):
         ''' If PointRepresentation return True if approx. equal.
             Return False if any other representation. '''
         if other.num_dim > self.num_dim: return False
         return self.location.almost_equals(other.location)
+
+    def contains_point(self, xy):
+        return self.location.almost_equals(xy)
 
     def get_points(self):
         return [self.location]
@@ -315,6 +323,9 @@ class LineRepresentation(AbstractRepresentation):
         elif isinstance(geo,Polygon):
             return poly_to_seg_distance(geo, self.line)
 
+    def distance_to_point(self, xy):
+        return self.line.distance_to( xy )
+
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
 
@@ -324,6 +335,9 @@ class LineRepresentation(AbstractRepresentation):
         # Line
         elif other.num_dim == 1:
             return self.line.contains_point(other.line.start) and self.line.contains_point(other.line.end)
+
+    def contains_point(self, xy):
+        return self.line.contains_point( xy )
 
     def get_geometry(self):
         return self.line
@@ -362,6 +376,9 @@ class CircleRepresentation(AbstractRepresentation):
             self.circ.distance_to(geo.center) - geo.radius
         return distance if distance > 0 else 0
 
+    def distance_to_point(self, xy):
+        return self.circ.distance_to( xy )
+
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
         if other.num_dim == 0:
@@ -374,6 +391,9 @@ class CircleRepresentation(AbstractRepresentation):
             for p in other.get_points():
                 if not self.circ.contains_point(p): return False
             return True
+
+    def contains_point(self, xy):
+        return self.circ.contains_point( xy )
 
     def get_geometry(self):
         return self.circ
@@ -455,6 +475,9 @@ class RectangleRepresentation(AbstractRepresentation):
         elif isinstance(geo,Polygon):
             return poly_to_poly_distance(self.rect.to_polygon(), geo)
 
+    def distance_to_point(self, xy):
+        return poly_to_vec_distance( self.rect.to_polygon(), xy )
+
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
         if other.num_dim == 0:
@@ -465,6 +488,9 @@ class RectangleRepresentation(AbstractRepresentation):
             for p in other.get_points():
                 if not self.rect.contains_point(p): return False
             return True
+
+    def contains_point(self, xy):
+        return self.rect.contains_point( xy )
 
     def get_geometry(self):
         return self.rect
@@ -503,6 +529,9 @@ class PolygonRepresentation(AbstractRepresentation):
         elif isinstance(geo, Polygon):
             return poly_to_poly_distance(self.poly, geo)
 
+    def distance_to_point(self, xy):
+        return poly_to_vec_distance( self.poly, xy )
+
     def contains(self, other):
         if other.num_dim > self.num_dim: return False
         if other.num_dim == 0:
@@ -513,6 +542,9 @@ class PolygonRepresentation(AbstractRepresentation):
             for p in other.get_points():
                 if not self.poly.contains_point(p): return False
             return True
+
+    def contains_point(self, xy):
+        return self.poly.contains_point( xy )
 
     def get_geometry(self):
         return self.poly
