@@ -1,0 +1,6 @@
+LOCATION-PHRASE [ <1 (RELATION=rel <1 TO) & <2 (LANDMARK-PHRASE=lmkp [ <1 (LANDMARK=lmk [ <1 DT & <-1 JJ]) & <2 OF=of ] ) ]
+
+move lmk >-1 rel
+move of >-1 rel
+excise lmk lmk
+excise lmkp lmkp
