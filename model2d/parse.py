@@ -22,17 +22,17 @@ def parse_sentences(ss, parser_path='../bllip-parser'):
         temp.write('<s> %s </s>\n' % s)
     temp.flush()
     # where am i?
-    prev_path = os.getcwd()
+    # prev_path = os.getcwd()
     # get into the charniak parser directory
-    os.chdir(parser_path)
+    # os.chdir(parser_path)
     # call the parser
-    proc = subprocess.Popen(['./parse.sh', '-t4', temp.name],
+    proc = subprocess.Popen(['./parse.sh', temp.name],
                             stdout=subprocess.PIPE,
                             stderr=subprocess.PIPE)
     # capture output
     output = proc.communicate()[0]
     # return to where i was
-    os.chdir(prev_path)
+    # os.chdir(prev_path)
     # get rid of temporary file
     temp.close()
     # return the parse trees
