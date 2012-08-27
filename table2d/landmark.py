@@ -166,10 +166,16 @@ class Landmark(object):
         return self.get_top_parent().get_primary_axes()
 
     def distance_to(self, rep):
-        # TODO: Figure out how to do this projection, so that if the table's a line, near the side isn't a radius around a point
-        #tpd = self.get_top_parent().distance_to(point)
-        #if self.parent: point = self.parent.project_point(point)
-        return self.representation.distance_to(rep)# + tpd
+        top_parent = self.get_top_parent()
+        min_dist = 0
+
+        for p in rep.get_points():
+            tpd = top_parent.distance_to_point(p)
+            if self.parent: p = self.parent.project_point(p)
+            d = self.representation.distance_to_point(p) + tpd
+            if d < min_dist: min_dist = d
+
+        return min_dist
 
     def get_top_parent(self):
         top = self.parent
@@ -221,7 +227,7 @@ class AbstractRepresentation(object):
         raise NotImplementedError
 
     def project_point(self, point):
-        if self.parent_landmark is None:
+        if self.parent_landmark is None or self.parent_landmark.parent is None:
             return self.my_project_point(point)
         else:
             return self.parent_landmark.parent.project_point(point)

@@ -72,7 +72,7 @@ class Measurement(object):
         degree_class = self.best_degree_class
         distance_class = self.best_distance_class
         return Measurement.get_applicability(self.distance, distance_class, degree_class)
-        
+
     def are_applicable(self, distances):
         degree_class = self.best_degree_class
         distance_class = self.best_distance_class
@@ -96,7 +96,7 @@ class Measurement(object):
 
     def __repr__(self):
         return 'Measurement< req: %i, bdegree: %s, bdistance: %s >' % (self.required, self.best_degree_class, self.best_distance_class)
-        
+
     @staticmethod
     def get_applicability(distances, distance_class, degree_class):
         mu,std,sign = Measurement.distance_classes[distance_class]
@@ -202,7 +202,6 @@ class OrientationRelation(Relation):
 
         self.distance = self.ori_ray.start.distance_to(self.projected)
         self.measurement = Measurement(self.distance, required=False, distance_class=Measurement.FAR)
-        print 'xxx', self.measurement.best_degree_class, self.measurement.best_distance_class
 
     @classmethod
     def get_orientation_ray(cls, perspective, landmark):

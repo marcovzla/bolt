@@ -118,6 +118,8 @@ if __name__ == '__main__':
             Bigram.make_bigrams(location.words)
             Trigram.make_trigrams(location.words)
 
+        if i % 200 == 0: session.commit()
+
     for sentence,(parse,modparse) in unique_sentences.items():
         SentenceParse.add_sentence_parse_blind(sentence, parse, modparse)
 
