@@ -167,7 +167,7 @@ class Landmark(object):
 
     def distance_to(self, rep):
         top_parent = self.get_top_parent()
-        min_dist = 0
+        min_dist = float('inf')
 
         for p in rep.get_points():
             tpd = top_parent.distance_to_point(p)
