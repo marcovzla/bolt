@@ -155,6 +155,7 @@ class CWord(Base):
     id = Column(Integer, primary_key=True)
 
     word = Column(String, nullable=False)
+    prev_word = Column(String)
     pos = Column(String, nullable=False)
 
     landmark = Column(Integer)

@@ -125,28 +125,38 @@ if __name__ == '__main__':
 
     session.commit()
 
+    print 'counting ...'
+
     # count words
+    w1 = aliased(Word)
+    w2 = aliased(Word)
     parent = aliased(Production)
-    qry = session.query(Word.word, Word.pos,
-                        parent.landmark, parent.landmark_class, parent.landmark_orientation_relations, parent.landmark_color,
+    qry = session.query(w1.word, w2.word, w2.pos,
+                        parent.lhs, parent.landmark, parent.landmark_class,
+                        parent.landmark_orientation_relations, parent.landmark_color,
                         parent.relation, parent.relation_distance_class,
-                        parent.relation_degree_class, func.count(Word.id)).\
-                  join(parent, Word.parent).\
-                  group_by(Word.word, Word.pos,
-                           parent.landmark, parent.landmark_class, parent.landmark_orientation_relations,
-                           parent.relation, parent.relation_distance_class,
-                           parent.relation_degree_class)
+                        parent.relation_degree_class, func.count(w2.id)) \
+                                .outerjoin(w1,Bigram.w1) \
+                                .join(w2,Bigram.w2) \
+                                .join(parent,w2.parent) \
+                                .group_by(w1.word, w2.word, w2.pos, parent.lhs,
+                                          parent.landmark, parent.landmark_class,
+                                          parent.landmark_orientation_relations,
+                                          parent.landmark_color, parent.relation,
+                                          parent.relation_distance_class,
+                                          parent.relation_degree_class)
     for row in qry:
-        cw = CWord(word=row[0],
-                   pos=row[1],
-                   landmark=row[2],
-                   landmark_class=row[3],
-                   landmark_orientation_relations=row[4],
-                   landmark_color=row[5],
-                   relation=row[6],
-                   relation_distance_class=row[7],
-                   relation_degree_class=row[8],
-                   count=row[9])
+        cw = CWord(word=row[1],
+                   prev_word=row[0],
+                   pos=row[2],
+                   landmark=row[4],
+                   landmark_class=row[5],
+                   landmark_orientation_relations=row[6],
+                   landmark_color=row[7],
+                   relation=row[8],
+                   relation_distance_class=row[9],
+                   relation_degree_class=row[10],
+                   count=row[11])
 
     # count productions with no parent
     parent = aliased(Production)
