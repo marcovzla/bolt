@@ -111,17 +111,18 @@ def poly_to_poly_distance(poly1, poly2):
 
 
 class Color(object):
-    RED = 'RED'
-    GREEN = 'GREEN'
-    PURPLE = 'PURPLE'
-    BLUE = 'BLUE'
-    PINK = 'PINK'
-    ORANGE = 'ORANGE'
-    YELLOW = 'YELLOW'
     BLACK = 'BLACK'
+    BLUE = 'BLUE'
+    GREEN = 'GREEN'
+    ORANGE = 'ORANGE'
+    PINK = 'PINK'
+    PURPLE = 'PURPLE'
+    RED = 'RED'
+    TEAL = 'TEAL'
     WHITE = 'WHITE'
+    YELLOW = 'YELLOW'
 
-    all = [RED,GREEN,PURPLE,BLUE,PINK,ORANGE,YELLOW,BLACK,WHITE]
+    all = [BLACK, BLUE, GREEN, ORANGE, PINK, PURPLE, RED, TEAL, WHITE, YELLOW]
 
 
 class ObjectClass(object):
@@ -167,7 +168,7 @@ class Landmark(object):
 
     def distance_to(self, rep):
         top_parent = self.get_top_parent()
-        min_dist = 0
+        min_dist = float('inf')
 
         for p in rep.get_points():
             tpd = top_parent.distance_to_point(p)

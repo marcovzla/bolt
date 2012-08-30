@@ -38,7 +38,7 @@ if __name__ == '__main__':
 
     for iteration in range(args.num_iterations):
         logger('Iteration %d' % iteration)
-        scale = 10000
+        scale = 1000
         rand_p = Vec2(random()*table.width+table.min_point.x, random()*table.height+table.min_point.y)
         meaning, sentence = generate_sentence(rand_p, args.consistent, scene, speaker)
 
