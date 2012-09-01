@@ -119,10 +119,11 @@ def update_word_counts(update, pos, word, lmk_class=None, lmk_ori_rels=None, lmk
                              rel_dist_class=(rel.measurement.best_distance_class if hasattr(rel, 'measurement') else None),
                              rel_deg_class=(rel.measurement.best_degree_class if hasattr(rel, 'measurement') else None))
 
-def get_words(terminals, landmarks, rel=None):
+def get_words(terminals, landmarks, rel=None, prevword=None):
     words = []
     probs = []
     entropy = []
+    C = CWord.get_count
 
     for n,lmk in zip(terminals, landmarks):
         # if we could not get an expansion for the LHS, we just pass down the unexpanded nonterminal symbol
@@ -139,35 +140,66 @@ def get_words(terminals, landmarks, rel=None):
         dist_class = (rel.measurement.best_distance_class if hasattr(rel, 'measurement') else None)
         deg_class = (rel.measurement.best_degree_class if hasattr(rel, 'measurement') else None)
 
-        cp_db = CWord.get_word_counts(pos=n,
-                                      lmk_class=lmk_class,
-                                      lmk_ori_rels=get_lmk_ori_rels_str(lmk),
-                                      lmk_color=lmk_color,
-                                      rel=rel_class,
-                                      rel_dist_class=dist_class,
-                                      rel_deg_class=deg_class)
 
-        if cp_db.count() <= 0:
-            logger( 'Could not expand %s (lmk_class: %s, lmk_color: %s, rel: %s, dist_class: %s, deg_class: %s)' % (n, lmk_class, lmk_color, rel_class, dist_class, deg_class) )
-            terminals.append( n )
-            continue
 
-        ckeys, ccounts = zip(*[(cword.word,cword.count) for cword in cp_db.all()])
+        meaning = dict(pos=n,
+                       lmk_class=lmk_class,
+                       lmk_ori_rels=get_lmk_ori_rels_str(lmk),
+                       lmk_color=lmk_color,
+                       rel=rel_class,
+                       rel_dist_class=dist_class,
+                       rel_deg_class=deg_class)
+
+        cp_db_uni = CWord.get_word_counts(**meaning)
 
         ccounter = {}
-        for cword in cp_db.all():
-            if cword.word in ccounter: ccounter[cword.word] += cword.count
-            else: ccounter[cword.word] = cword.count
+        for c in cp_db_uni:
+            ccounter[c.word] = ccounter.get(c.word, 0) + c.count
+        ckeys, ccounts_uni = zip(*ccounter.items())
+        ccounts_uni = np.array(ccounts_uni, dtype=float)
+        ccounts_uni /= ccounts_uni.sum()
 
-        ckeys, ccounts = zip(*ccounter.items())
+
+        prev_word = words[-1] if words else prevword
+        alpha = C(prev_word=prev_word, **meaning) / C(**meaning)
+
+
+        if alpha:
+            cp_db_bi = CWord.get_word_counts(prev_word=prev_word, **meaning)
+
+            ccounter = {}
+            for c in cp_db_bi:
+                ccounter[c.word] = ccounter.get(c.word, 0) + c.count
+            ccounts_bi = np.array([ccounter.get(k,0) for k in ckeys], dtype=float)
+            ccounts_bi /= ccounts_bi.sum()
+
+            cprob = (alpha * ccounts_bi) + ((1-alpha) * ccounts_uni)
+
+        else:
+            cprob = ccounts_uni
+
+
+        # if cp_db.count() <= 0:
+            # logger( 'Could not expand %s (lmk_class: %s, lmk_color: %s, rel: %s, dist_class: %s, deg_class: %s)' % (n, lmk_class, lmk_color, rel_class, dist_class, deg_class) )
+            # terminals.append( n )
+            # continue
+
+        # ckeys, ccounts = zip(*[(cword.word,cword.count) for cword in cp_db.all()])
+
+        # ccounter = {}
+        # for cword in cp_db.all():
+        #     if cword.word in ccounter: ccounter[cword.word] += cword.count
+        #     else: ccounter[cword.word] = cword.count
+
+        # ckeys, ccounts = zip(*ccounter.items())
 
         # print 'ckeys', ckeys
         # print 'ccounts', ccounts
 
-        ccounts = np.array(ccounts, dtype=float)
-        ccounts /= ccounts.sum()
+        # ccounts = np.array(ccounts, dtype=float)
+        # ccounts /= ccounts.sum()
 
-        w, w_prob, w_entropy = categorical_sample(ckeys, ccounts)
+        w, w_prob, w_entropy = categorical_sample(ckeys, cprob)
         words.append(w)
         probs.append(w_prob)
         entropy.append(w_entropy)
@@ -200,7 +232,7 @@ def generate_sentence(loc, consistent, scene=None, speaker=None):
         rel_exp_chain, rele_prob_chain, rele_ent_chain, rel_terminals, rel_landmarks = get_expansion('RELATION', rel=rel)
         lmk_exp_chain, lmke_prob_chain, lmke_ent_chain, lmk_terminals, lmk_landmarks = get_expansion('LANDMARK-PHRASE', lmk=lmk)
         rel_words, relw_prob, relw_ent = get_words(rel_terminals, landmarks=rel_landmarks, rel=rel)
-        lmk_words, lmkw_prob, lmkw_ent = get_words(lmk_terminals, landmarks=lmk_landmarks)
+        lmk_words, lmkw_prob, lmkw_ent = get_words(lmk_terminals, landmarks=lmk_landmarks, prevword=(rel_words[-1] if rel_words else None))
         sentence = ' '.join(rel_words + lmk_words)
 
         logger( 'rel_exp_chain: %s' % rel_exp_chain )

@@ -169,6 +169,11 @@ class CWord(Base):
     count = Column(Float, nullable=False, default=0)
 
     @classmethod
+    def get_count(cls, **kwargs):
+        q = cls.get_word_counts(**kwargs)
+        return sum(c.count for c in q)
+
+    @classmethod
     def get_word_counts(cls,
                         pos=None,
                         word=None,
@@ -178,7 +183,8 @@ class CWord(Base):
                         lmk_color=None,
                         rel=None,
                         rel_dist_class=None,
-                        rel_deg_class=None):
+                        rel_deg_class=None,
+                        prev_word='<no prev word>'):
         q = cls.query
         if word != None:
             q = q.filter(CWord.word==word)
@@ -198,6 +204,10 @@ class CWord(Base):
             q = q.filter(CWord.relation_distance_class==rel_dist_class)
         if rel_deg_class != None:
             q = q.filter(CWord.relation_degree_class==rel_deg_class)
+        # NOTE `None` is a valid value for `prev_word`, it means the current
+        # word is the beginning of the sentence.
+        if prev_word != '<no prev word>':
+            q = q.filter(CWord.prev_word==prev_word)
 
         return q
 
