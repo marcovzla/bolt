@@ -216,6 +216,7 @@ class CWord(Base):
                            update,
                            pos,
                            word,
+                           prev_word,
                            lmk=None,
                            lmk_class=None,
                            lmk_ori_rels=None,
@@ -223,12 +224,13 @@ class CWord(Base):
                            rel=None,
                            rel_dist_class=None,
                            rel_deg_class=None):
-        cp_db = cls.get_word_counts(pos, word, lmk, lmk_class, lmk_ori_rels, lmk_color, rel, rel_dist_class, rel_deg_class)
+        cp_db = cls.get_word_counts(pos, word, lmk, lmk_class, lmk_ori_rels, lmk_color, rel, rel_dist_class, rel_deg_class, prev_word)
 
         if cp_db.count() <= 0:
-            assert(update > 0)
+            if update > 0: return
             CWord(word=word,
                   pos=pos,
+                  prev_word=prev_word,
                   landmark=lmk_id(lmk),
                   landmark_class=lmk_class,
                   landmark_orientation_relations=lmk_ori_rels,
